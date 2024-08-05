@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import json
 import datetime
-from src.utils import dump_dataset_to_csv
+from utils import dump_dataset_to_csv
 from torch.utils.data import Dataset
 import os
 
@@ -343,16 +343,6 @@ class Match3VectorDataset(Dataset):
             for c, char in enumerate(word):
                 sequences[t, w, offset + self.data_len*2 + c * self.mod + int(char)] = 1  #Handles the digits in the tuples, and single digits in CoT
     
-    def handle_digit_labels(self, sequences, t, w, word):
-        offset = len(self.word_index_map)
-        if '-' in word: # Handle tuple index encodings
-            indices = [int(d) for d in word.split('-') if d!='']
-            for i,idx in enumerate(indices):
-                sequences[t, w] = offset + i*self.data_len + idx
-        else:
-            for c, char in enumerate(word):
-                sequences[t, w] = offset + self.data_len*2 + c * self.mod + int(char) #Handles the digits in the tuples, and single digits in CoT
-                
     def tensorize_inputs_worker(self, chunk):
         sequences = torch.zeros(len(chunk), self.max_len, self.input_dim, dtype=torch.float16)
         for t, text in enumerate(chunk['text']):
@@ -367,6 +357,16 @@ class Match3VectorDataset(Dataset):
             sequences[t, w + 1:, 0] = 1  # EOS
         return sequences
     
+    def handle_digit_labels(self, sequences, t, w, word):
+        offset = len(self.word_index_map)
+        if '-' in word: # Handle tuple index encodings
+            indices = [int(d) for d in word.split('-') if d!='']
+            for i,idx in enumerate(indices):
+                sequences[t, w] = offset + i*self.data_len + idx
+        else:
+            for c, char in enumerate(word):
+                sequences[t, w] = offset + self.data_len*2 + c * self.mod + int(char) #Handles the digits in the tuples, and single digits in CoT
+ 
     def tensorize_labels_worker(self, chunk):
         '''
         Labels are determined based on the word index map. The mapping is as follows:
