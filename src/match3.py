@@ -2,9 +2,10 @@ import numpy as np
 import torch
 import json
 import datetime
-from utils import dump_dataset_to_csv
+from src.utils import dump_dataset_to_csv
 from torch.utils.data import Dataset
 import os
+from tqdm import tqdm
 
 class Match3():
     '''
@@ -226,7 +227,7 @@ def GenerateMatch3Dataset(name, train_samples=int(1e4), test_samples=int(1e3),
     filler_length = length**2
 
     dataset = []
-    for i in range(train_samples+test_samples):
+    for i in tqdm(range(train_samples+test_samples)):
         if corruption_vec[i] == 1:
             sample = matcher.get_true_instance(dense=True, serial=(cot_to_string==serial_cot))
         else:
@@ -234,7 +235,7 @@ def GenerateMatch3Dataset(name, train_samples=int(1e4), test_samples=int(1e3),
         dataset.append(sample)
     
     train_dataset, test_dataset = [], []
-    for i in range(train_samples):
+    for i in tqdm(range(train_samples)):
         sample = dataset[i]
         if filler_vec[i] == 0:
             train_dataset.append(cot_to_string(*sample)) #CoT like cot string includes the transform
@@ -242,7 +243,7 @@ def GenerateMatch3Dataset(name, train_samples=int(1e4), test_samples=int(1e3),
             train_dataset.append(filler_to_string(*sample, num_filler=filler_length)) #filler like string
         else:
             train_dataset.append(no_filler_to_string(*sample)) #No filler and no cot i.e. straight to answer
-    for i in range(train_samples, train_samples+test_samples):
+    for i in tqdm(range(train_samples, train_samples+test_samples)):
         sample = dataset[i]
         if filler_vec[i] == 0:
             test_dataset.append(cot_to_string(*sample))
@@ -343,6 +344,16 @@ class Match3VectorDataset(Dataset):
             for c, char in enumerate(word):
                 sequences[t, w, offset + self.data_len*2 + c * self.mod + int(char)] = 1  #Handles the digits in the tuples, and single digits in CoT
     
+    def handle_digit_labels(self, sequences, t, w, word):
+        offset = len(self.word_index_map)
+        if '-' in word: # Handle tuple index encodings
+            indices = [int(d) for d in word.split('-') if d!='']
+            for i,idx in enumerate(indices):
+                sequences[t, w] = offset + i*self.data_len + idx
+        else:
+            for c, char in enumerate(word):
+                sequences[t, w] = offset + self.data_len*2 + c * self.mod + int(char) #Handles the digits in the tuples, and single digits in CoT
+                
     def tensorize_inputs_worker(self, chunk):
         sequences = torch.zeros(len(chunk), self.max_len, self.input_dim, dtype=torch.float16)
         for t, text in enumerate(chunk['text']):
@@ -357,16 +368,6 @@ class Match3VectorDataset(Dataset):
             sequences[t, w + 1:, 0] = 1  # EOS
         return sequences
     
-    def handle_digit_labels(self, sequences, t, w, word):
-        offset = len(self.word_index_map)
-        if '-' in word: # Handle tuple index encodings
-            indices = [int(d) for d in word.split('-') if d!='']
-            for i,idx in enumerate(indices):
-                sequences[t, w] = offset + i*self.data_len + idx
-        else:
-            for c, char in enumerate(word):
-                sequences[t, w] = offset + self.data_len*2 + c * self.mod + int(char) #Handles the digits in the tuples, and single digits in CoT
- 
     def tensorize_labels_worker(self, chunk):
         '''
         Labels are determined based on the word index map. The mapping is as follows:

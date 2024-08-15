@@ -1,4 +1,4 @@
-from data_utils import GenerateMatch3Dataset
+from src import GenerateMatch3Dataset
 from src.match3 import STRING_FUNCTION_MAP
 import argparse
 

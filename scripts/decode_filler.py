@@ -7,10 +7,10 @@ import datetime
 from torch.utils.data import DataLoader
 from transformers import GPTNeoXForCausalLM, AutoModelForCausalLM, AutoConfig
 
-from train import vector_train_loop, dot_tf_batch_to_type
-from utils import get_files_from_name, format_data_file_name, InputEmbedCausalTransformer
-from utils import train_steps, get_optimizer, freeze_model, remove_dots
-from data_utils import Match3VectorDataset
+from src.train_match3 import vector_train_loop, dot_tf_batch_to_type
+from src.utils import get_files_from_name, format_data_file_name, InputEmbedCausalTransformer
+from src.utils import train_steps, get_optimizer, freeze_model, remove_dots
+from src import Match3VectorDataset
 
 def parse_arguments():
     parser = argparse.ArgumentParser()

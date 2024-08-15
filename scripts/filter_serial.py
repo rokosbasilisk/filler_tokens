@@ -2,7 +2,7 @@ import numpy as np
 import glob
 import os
 import sys
-from utils import get_files_from_name
+from src.utils import get_files_from_name
 
 def count_spaces_per_line(file_path):
     space_counts = []
