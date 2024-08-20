@@ -1,0 +1,123 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{todonotes}
+
+\title{Unveiling Hidden Computations: Decoding Chain-of-Thought in Transformer Models}
+
+\author{Your Name\\
+Your Affiliation\\
+\texttt{your.email@example.com}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Recent work has shown that transformer models can perform complex reasoning tasks using Chain-of-Thought (COT) prompting, even when the COT is replaced with hidden characters. This paper investigates methods to decode these hidden computations, focusing on the 3SUM task. We analyze a 34M parameter LLaMA model trained on hidden COT sequences and propose a novel decoding method that successfully recovers the original COT. Our findings provide insights into how transformers encode and process information in hidden COT sequences, offering new perspectives on model interpretability and the nature of computation in language models.
+\end{abstract}
+
+\section{Introduction}
+Chain-of-Thought (COT) prompting has emerged as a powerful technique for improving the performance of large language models on complex reasoning tasks \citep{wei2022chain}. However, recent work by \citet{pfau2024let} demonstrates that these improvements can be achieved even when the COT is replaced with hidden characters (e.g., "..."), raising intriguing questions about the nature of computation being performed within these models.
+
+This paper builds upon the findings of \citet{pfau2024let}, focusing on the 3SUM task as a case study. We aim to decode the hidden computations embedded within the transformer architecture when trained on hidden COT sequences. Our work provides valuable insights into how these models encode and process information, potentially leading to improved model interpretability and more effective training strategies.
+
+\section{Background}
+\subsection{The 3SUM Task}
+The 3SUM task involves finding three numbers in a given set that sum to zero. It serves as a proxy for more complex reasoning tasks and has been used to study the computational capabilities of transformer models \citep{pfau2024let}.
+
+\subsection{Hidden Chain-of-Thought}
+In the hidden COT approach, the intermediate reasoning steps typically provided in COT prompting are replaced with hidden characters (e.g., "..."). Surprisingly, models trained on these hidden sequences can still perform well on the target task, suggesting that meaningful computation is occurring within the model despite the lack of explicit reasoning steps.
+
+\section{Methodology}
+We conducted our experiments using a 34M parameter LLaMA model trained on the 3SUM task with hidden COT sequences, replicating the setup described in \citet{pfau2024let}. Our investigation focused on three main areas:
+
+\subsection{Token Ranking Analysis}
+We examined the rankings of tokens during greedy decoding to understand how the model prioritizes hidden characters versus meaningful tokens.
+
+\subsection{Layer-wise Representation Analysis}
+Using a logit-lens-like method, we analyzed the hidden representations across different layers of the transformer to track the progression of information encoding.
+
+\subsection{Modified Greedy Decoding Algorithm}
+We developed a novel decoding method designed to recover the original COT sequences from the hidden representations.
+
+\section{Results and Discussion}
+
+\subsection{Token Rankings in Greedy Decoding}
+During standard greedy decoding, we observed that the top-ranked token was consistently the hidden character ("."). However, examination of lower-ranked tokens revealed the presence of the original, non-hidden COT sequences.
+
+\begin{figure}[h]
+\centering
+\todo[inline]{Insert figure showing token probability distribution during decoding}
+\caption{Token probability distribution during greedy decoding for a sample 3SUM instance.}
+\label{fig:token_probs}
+\end{figure}
+
+Figure \ref{fig:token_probs} illustrates the typical probability distribution of tokens during decoding. While the hidden character dominates the top position, meaningful tokens related to the COT occupy the subsequent ranks.
+
+\subsection{Layer-wise Analysis of Hidden Representations}
+Our analysis revealed a progressive transformation of representations across the model's layers:
+
+\begin{itemize}
+    \item Initial layers (h1\_out, h2\_out) contained pure number sequences related to the 3SUM's COT.
+    \item Hidden tokens consistently appeared in the output starting from the third layer (h3\_out).
+    \item Subsequent layers showed a gradual replacement of number sequences with hidden characters.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\todo[inline]{Insert figure showing layer-wise transformation of representations}
+\caption{Transformation of hidden representations across transformer layers.}
+\label{fig:layer_transform}
+\end{figure}
+
+Figure \ref{fig:layer_transform} visualizes this transformation process, highlighting the gradual encoding of COT information into hidden representations.
+
+\subsection{Modified Greedy Decoding Algorithm}
+We implemented a modified greedy autoregressive decoding method to recover the original COT sequences:
+
+\begin{enumerate}
+    \item Perform standard greedy decoding.
+    \item When encountering a hidden token ("."), select the second-highest probability token instead.
+    \item Continue this process for the entire sequence.
+\end{enumerate}
+
+This method achieved a 100\% match in 3SUM satisfaction compared to standard non-skip decoding, effectively recovering the original COT sequences.
+
+\begin{figure}[h]
+\centering
+\todo[inline]{Insert figure comparing standard and modified decoding results}
+\caption{Comparison of standard greedy decoding and our modified decoding method.}
+\label{fig:decoding_comparison}
+\end{figure}
+
+Figure \ref{fig:decoding_comparison} demonstrates the effectiveness of our modified decoding method in recovering meaningful COT sequences.
+
+\section{Implications and Future Work}
+Our findings have several important implications:
+
+\begin{enumerate}
+    \item Model Interpretability: The ability to decode hidden COT sequences provides a new tool for understanding the internal reasoning processes of transformer models.
+    \item Training Strategies: Insights from this work could inform the development of more efficient training methods that leverage implicit computations.
+    \item Alignment and Safety: Understanding hidden computations is crucial for ensuring that language models behave as intended, especially in safety-critical applications.
+\end{enumerate}
+
+Future work should focus on:
+\begin{itemize}
+    \item Extending these methods to more complex tasks and larger language models.
+    \item Investigating the generalizability of hidden computations across different model architectures and training regimes.
+    \item Exploring the potential for using decoded COT sequences to improve model performance or efficiency.
+\end{itemize}
+
+\section{Conclusion}
+This paper presents a novel approach to decoding hidden computations in transformer models trained on Chain-of-Thought sequences. By analyzing token rankings, tracking layer-wise representations, and developing a modified decoding algorithm, we have shed light on how these models encode and process information in hidden COT sequences.
+
+Our findings not only contribute to the understanding of transformer model behavior but also open new avenues for improving model interpretability, efficiency, and safety. As language models continue to grow in size and capability, the ability to unveil their hidden computations will become increasingly crucial for responsible AI development and deployment.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
