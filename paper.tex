@@ -36,10 +36,10 @@ This paper builds upon the findings of [2], focusing on the 3SUM task as a case 
 \section{Background}
 
 \subsection{The 3SUM Task}
-The 3SUM task involves finding three numbers in a given set that sum to zero. It serves as a proxy for more complex reasoning tasks and has been used to study the computational capabilities of transformer models [2].
+The 3SUM task involves finding three numbers in a given set that sum to zero. In this experiment it serves as a proxy for more complex reasoning tasks to study the computational capabilities of transformer models [1]. For this experiment we have used the same data representation method and generating process or 3SUM sequences as in [1].
 
 \subsection{Hidden Chain-of-Thought}
-In hidden Chain-of-Thought, intermediate reasoning steps are replaced with hidden characters (e.g., "..."). Models trained on hidden sequences still perform well, suggesting that meaningful computation occurs despite the lack of explicit reasoning steps [2].
+In hidden Chain-of-Thought, intermediate reasoning steps are replaced with hidden characters (e.g., "..."). It has been observed in [1] that the models trained on hidden sequences still perform well, suggesting that meaningful computation occurs despite the lack of explicit reasoning steps.
 
 \section{Methodology}
 We used a 34M-parameter LLaMA model with 4 layers, 384 hidden dimension, and 6 attention heads [4], the size of the training and test datasets and all other hyperparameters are kept the same as in the "Let's think dot by dot" paper [2]. Our analysis focused on three main areas: Layer-wise Representation Analysis, Token Ranking, and Modified Greedy Decoding Algorithm.
@@ -83,7 +83,7 @@ The code used for the experiments and analysis in this paper is available on Git
 \clearpage
 \begin{figure}[p]
     \centering
-    \section{Appendix: Layerwise view of various decoding methods}
+    \section{Appendix: Layerwise view of sequences generated via various decoding methods}
     \vspace{-0.5em}  % Reduce space after the title
     
     \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{greedy_decoding.png}
