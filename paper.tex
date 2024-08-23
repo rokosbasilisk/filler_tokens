@@ -77,11 +77,12 @@ Our findings provide new tools for understanding internal reasoning processes an
 \clearpage
 \section{Conclusion}
 We have presented a novel approach to understanding hidden computations in transformer models through the analysis of token rankings and layer-wise representations, and the development of a modified decoding algorithm. Our insights into how models encode and process information in hidden COT sequences open new avenues for improving interpretability, efficiency, and safety in language models. This work strengthens the belief in COT visibility research for interpretability.
-
-\appendix
+\vfill
+The code used for the experiments and analysis in this paper is available on GitHub at \href{https://github.com/rokosbasilisk/filler_tokens/tree/v2}{https://github.com/rokosbasilisk/filler\_tokens/tree/v2}.
+\clearpage
 \begin{figure}[p]
     \centering
-    \section{Layerwise comparison of decoding methods}
+    \section{Appendix: Layerwise view of various decoding methods}
     \vspace{-0.5em}  % Reduce space after the title
     
     \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{greedy_decoding.png}
@@ -108,7 +109,6 @@ We have presented a novel approach to understanding hidden computations in trans
 \end{figure}
 
 \clearpage
-\section{References}
 
 \begin{thebibliography}{9}
 
