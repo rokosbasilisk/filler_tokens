@@ -24,40 +24,45 @@ Independent Researcher\\
 \maketitle
 
 \begin{abstract}
-Transformer models can perform complex reasoning with Chain-of-Thought (COT) prompting. COT can be replaced with hidden characters while maintaining performance. This paper investigates methods to decode these hidden computations, focusing on the 3SUM task using a 34M parameter LLaMA model. We propose a novel decoding method to recover the original COT, providing insights into how transformers encode and process hidden COT information. Our work offers new perspectives on model interpretability and computation in language models.
+Recent work has shown that transformer models can perform complex reasoning tasks using Chain-of-Thought (COT) prompting, even when the COT is replaced with hidden characters. This paper investigates methods to decode these hidden computations, focusing on the 3SUM task. We analyze a 34M parameter LLaMA model trained on hidden COT sequences and propose a novel decoding method that successfully recovers the original COT. Our findings provide insights into how transformers encode and process information in hidden COT sequences, offering new perspectives on model interpretability and the nature of computation in language models.
+
 \end{abstract}
 
 \section{Introduction}
-COT prompting improves the performance of large language models\cite{2}. Recent work shows that these improvements persist when COT is replaced with hidden characters, raising questions about the nature of computation in these models\cite{1}. This paper builds on findings by Pfau et al., focusing on the 3SUM task as a case study. We aim to decode hidden computations in the transformer architecture, with potential for improved model interpretability and training strategies.
+Chain-of-Thought (COT) prompting has emerged as a powerful technique for improving the performance of large language models on complex reasoning tasks [1]. However, recent work by [2] demonstrates that these improvements can be achieved even when the COT is replaced with hidden characters (e.g., "..."), raising intriguing questions about the nature of computation being performed within these models.
+
+This paper builds upon the findings of [2], focusing on the 3SUM task as a case study. We aim to decode the hidden computations embedded within the transformer architecture when trained on hidden COT sequences. Our work provides valuable insights into how these models encode and process information, potentially leading to improved model interpretability and more effective training strategies.
 
 \section{Background}
 
 \subsection{The 3SUM Task}
-The 3SUM task involves finding three numbers in a set that sum to zero. It serves as a proxy for more complex reasoning tasks and is used to study the computational capabilities of transformer models\cite{3}. An example of a 3SUM sequence is provided in the methodology section.
+The 3SUM task involves finding three numbers in a given set that sum to zero. It serves as a proxy for more complex reasoning tasks and has been used to study the computational capabilities of transformer models [2].
 
 \subsection{Hidden Chain-of-Thought}
-In hidden Chain-of-Thought, intermediate reasoning steps are replaced with hidden characters (e.g., "..."). Models trained on hidden sequences still perform well, suggesting that meaningful computation occurs despite the lack of explicit reasoning steps\cite{1}.
+In hidden Chain-of-Thought, intermediate reasoning steps are replaced with hidden characters (e.g., "..."). Models trained on hidden sequences still perform well, suggesting that meaningful computation occurs despite the lack of explicit reasoning steps [2].
 
 \section{Methodology}
-We used a 34M-parameter LLaMA model with 4 layers, 384 hidden dimension, and 6 attention heads\cite{4}. Our analysis focused on three main areas: Layer-wise Representation Analysis, Token Ranking, and Modified Greedy Decoding Algorithm.
+We used a 34M-parameter LLaMA model with 4 layers, 384 hidden dimension, and 6 attention heads [4], the size of the training and test datasets and all other hyperparameters are kept the same as in the "Let's think dot by dot" paper [2]. Our analysis focused on three main areas: Layer-wise Representation Analysis, Token Ranking, and Modified Greedy Decoding Algorithm.
 
 \section{Results and Discussion}
 
 \subsection{Layer-wise Analysis}
-We observed a progressive transformation of representations across layers. Initial layers contained pure number sequences related to 3SUM's COT, with hidden tokens appearing from the third layer onward. We observed a gradual replacement of number sequences with hidden characters.
+Our analysis revealed a gradual evolution of representations across the model's layers. The initial layers primarily contained raw numerical sequences associated with the 3SUM problem's chain of thought. However, starting from the third layer, we noticed the emergence of hidden tokens. As we progressed through subsequent layers, we observed a steady transition from purely numerical sequences to an increasing prevalence of hidden characters.
+This pattern suggests that the model develops the ability to utilize hidden tokens as proxies only in its deeper layers, which aligns with intuitive expectations of how neural networks process information. After conducting a comprehensive evaluation across numerous examples, we found that, on average, there is a marked increase in hidden token usage immediately following the second layer. Furthermore, the final layers of the model demonstrate extensive reliance on these hidden tokens.
+For this analysis, we employed nostalgebraist's logit lens method [3].
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{hidden_tokens_percentage_by_layer.png}
-\caption{Hidden token percentages across layers}
+\caption{Hidden token occurange percentages in generated sequences across layers}
 \label{fig:hidden_token_percentages}
 \end{figure}
 
 \subsection{Token Rank Analysis}
-The top-ranked token was consistently the hidden character ("."), while lower-ranked tokens revealed the original, non-hidden COT sequences. This supports the hypothesis that the model replaces all computation with hidden tokens on top while keeping the original computation intact underneath.
+The top-ranked token was consistently the hidden character ("."), while lower-ranked tokens revealed the original, non-hidden COT sequences. This supports the hypothesis that the model replaces all computation with hidden tokens on top while keeping the original computation intact underneath. We have provided sample a sample snapshot of sequences decoded at each layer for both the top (rank-1) and rank-2 tokens in the appendix section.
 
 \subsection{Modified Greedy Decoding Algorithm}
-We implemented a modified greedy autoregressive decoding method. The steps include: performing standard greedy decoding, selecting the second-highest probability token when encountering a hidden token, and continuing this process for the entire sequence. This resulted in a 100\% match in 3SUM task results with and without hidden tokens. Random token replacement was less effective than choosing the next highest ranked token.
+Based on the observations made in the token rank analysis, We implemented a modified greedy autoregressive decoding method. The steps include: performing standard greedy decoding, selecting the second-highest probability token when encountering a hidden token, and continuing this process for the entire sequence. This resulted in a 100\% match in 3SUM task results with and without hidden tokens. To test the effectiveness of this method, we have also compared this with replacing the hidden token with randomly sampled token instead of the next highest (rank-2) token. The percentages of the original and these modified decoding methods are visualized as plots below. 
 
 \begin{figure}[h]
 \centering
@@ -71,7 +76,7 @@ Our findings provide new tools for understanding internal reasoning processes an
 
 \clearpage
 \section{Conclusion}
-We have presented a novel approach to understanding hidden computations in transformer models through the analysis of token rankings and layer-wise representations, and the development of a modified decoding algorithm. Our insights into how models encode and process information in hidden COT sequences open new avenues for improving interpretability, efficiency, and safety in language models. This work strengthens the belief in COT visibility research for interpretability\cite{2}.
+We have presented a novel approach to understanding hidden computations in transformer models through the analysis of token rankings and layer-wise representations, and the development of a modified decoding algorithm. Our insights into how models encode and process information in hidden COT sequences open new avenues for improving interpretability, efficiency, and safety in language models. This work strengthens the belief in COT visibility research for interpretability.
 
 \appendix
 \begin{figure}[p]
@@ -105,16 +110,20 @@ We have presented a novel approach to understanding hidden computations in trans
 \clearpage
 \section{References}
 
-\begin{enumerate}
-\item Pfau, J., Merrill, W., \& Bowman, S. R. (2023). Let's Think Dot by Dot: Hidden Computation in Transformer Language Models. \href{https://arxiv.org/abs/2404.15758}{arXiv:2404.15758}.
+\begin{thebibliography}{9}
 
-\item Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B., Xia, F., ... \& Zhou, D. (2022). Chain-of-thought prompting elicits reasoning in large language models. \href{https://arxiv.org/abs/2201.11903}{arXiv:2201.11903}.
+\bibitem{pfau2024let}
+Pfau, J., Merrill, W., \& Bowman, S. R. (2023). Let's Think Dot by Dot: Hidden Computation in Transformer Language Models. \href{https://arxiv.org/abs/2404.15758}{arXiv:2404.15758}.
 
-\item Sanford, C., Hsu, D. J., \& Telgarsky, M. (2023). Representational strengths and limitations of transformers. \href{https://arxiv.org/abs/2306.02896}{arXiv:2306.02896}.
+\bibitem{wei2022chain}
+Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B., Xia, F., ... \& Zhou, D. (2022). Chain-of-thought prompting elicits reasoning in large language models. \href{https://arxiv.org/abs/2201.11903}{arXiv:2201.11903}.
 
-\item Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M. A., Lacroix, T., ... \& Lample, G. (2023). LLaMA: Open and Efficient Foundation Language Models. \href{https://arxiv.org/abs/2302.13971}{arXiv:2302.13971}.
+\bibitem{nostalgebraist2020}
+nostalgebraist (2020). interpreting GPT: the logit lens \href{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/}{interpreting-gpt-the-logit-lens}
 
-\item Lanham, T., Chen, A., Radhakrishnan, A., Steiner, B., Denison, C., Hernandez, D., ... \& Hubinger, E. (2023). Measuring faithfulness in chain-of-thought reasoning. \href{https://arxiv.org/abs/2307.13702}{arXiv:2307.13702}.
-\end{enumerate}
+\bibitem{touvron2023llama}
+Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M. A., Lacroix, T., ... \& Lample, G. (2023). LLaMA: Open and Efficient Foundation Language Models. \href{https://arxiv.org/abs/2302.13971}{arXiv:2302.13971}.
+
+\end{thebibliography}
 
 \end{document}
