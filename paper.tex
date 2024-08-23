@@ -51,12 +51,13 @@ Our analysis revealed a gradual evolution of representations across the model's 
 This pattern suggests that the model develops the ability to utilize hidden tokens as proxies only in its deeper layers, which aligns with intuitive expectations of how neural networks process information. After conducting a comprehensive evaluation across numerous examples, we found that, on average, there is a marked increase in hidden token usage immediately following the second layer. Furthermore, the final layers of the model demonstrate extensive reliance on these hidden tokens.
 For this analysis, we employed nostalgebraist's logit lens method [3].
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{hidden_tokens_percentage_by_layer.png}
-\caption{Hidden token occurange percentages in generated sequences across layers}
+\caption{Hidden token occurrence percentages in generated sequences across layers}
 \label{fig:hidden_token_percentages}
 \end{figure}
+
 
 \subsection{Token Rank Analysis}
 The top-ranked token was consistently the hidden character ("."), while lower-ranked tokens revealed the original, non-hidden COT sequences. This supports the hypothesis that the model replaces all computation with hidden tokens on top while keeping the original computation intact underneath. We have provided sample a sample snapshot of sequences decoded at each layer for both the top (rank-1) and rank-2 tokens in the appendix section.
@@ -64,7 +65,7 @@ The top-ranked token was consistently the hidden character ("."), while lower-ra
 \subsection{Modified Greedy Decoding Algorithm}
 Based on the observations made in the token rank analysis, We implemented a modified greedy autoregressive decoding method. The steps include: performing standard greedy decoding, selecting the second-highest probability token when encountering a hidden token, and continuing this process for the entire sequence. This resulted in a 100\% match in 3SUM task results with and without hidden tokens. To test the effectiveness of this method, we have also compared this with replacing the hidden token with randomly sampled token instead of the next highest (rank-2) token. The percentages of the original and these modified decoding methods are visualized as plots below. 
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{token_comparison_percentages.png}
 \caption{Comparison of decoding methods}
