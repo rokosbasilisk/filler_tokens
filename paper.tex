@@ -5,6 +5,15 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{csvsimple}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{caption}
+
 
 \title{Let's Decrypt Dot by Dot: Decoding Hidden Computation in Transformer Language Models}
 \author{Aryasomayajula Ram Bharadwaj\\
@@ -61,7 +70,37 @@ We implemented a modified greedy autoregressive decoding method. Steps include: 
 \section{Implications and Future Work}
 Our findings provide new tools for understanding internal reasoning processes and increase confidence in COT-based approaches for improving visibility. Future work should focus on developing better decoding methods or finding circuits that hide tokens, investigating generalizability to tasks beyond 3SUM (including natural language tasks), and improving token hiding methods (currently limited to one hidden token which is simple to decode).
 
+
+\clearpage
 \section{Conclusion}
 We have presented a novel approach to understanding hidden computations in transformer models through analysis of token rankings and layer-wise representations, and development of a modified decoding algorithm. Our insights into how models encode and process information in hidden COT sequences open new avenues for improving interpretability, efficiency, and safety in language models. This work strengthens the belief in COT visibility research for interpretability.
 
+\appendix
+\begin{figure}[p]
+    \centering
+    \section{Layerwise comparison of decoding methods}
+    \vspace{-0.5em}  % Reduce space after the title
+    
+    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{greedy_decoding.png}
+    \captionof{figure}{Greedy Decoding}
+    \label{fig:greedy}
+    
+    \vspace{0.5em}
+    
+    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{rank2_decoding.png}
+    \captionof{figure}{Greedy Decoding with Rank-2 Tokens}
+    \label{fig:rank2}
+    
+    \vspace{0.5em}
+    
+    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{our_method_decoding.png}
+    \captionof{figure}{Our Method: Greedy Decoding with Hidden Tokens Replaced by Rank-2 Tokens}
+    \label{fig:our-method}
+    
+    \vspace{0.5em}
+    
+    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{random_tokens_decoding.png}
+    \captionof{figure}{Greedy Decoding with Hidden Tokens Replaced by Randomly Selected Tokens}
+    \label{fig:random}
+\end{figure}
 \end{document}
