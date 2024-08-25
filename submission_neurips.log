@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.8.2)  25 AUG 2024 23:07
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.8.2)  26 AUG 2024 00:16
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -581,22 +581,22 @@ Package pdftex.def Info: token_comparison_percentages.png  used on input line 7
 7.
 (pdftex.def)             Requested size: 397.48499pt x 277.3243pt.
 [3 <./token_comparison_percentages.png>] [4]
-<greedy_decoding.png, id=94, 1241.63875pt x 324.21124pt>
+<greedy_decoding.png, id=92, 1241.63875pt x 324.21124pt>
 File: greedy_decoding.png Graphic file (type png)
 <use greedy_decoding.png>
 Package pdftex.def Info: greedy_decoding.png  used on input line 96.
 (pdftex.def)             Requested size: 397.48499pt x 103.78929pt.
-<rank2_decoding.png, id=95, 1215.54124pt x 326.21875pt>
+<rank2_decoding.png, id=93, 1215.54124pt x 326.21875pt>
 File: rank2_decoding.png Graphic file (type png)
 <use rank2_decoding.png>
 Package pdftex.def Info: rank2_decoding.png  used on input line 103.
 (pdftex.def)             Requested size: 397.48499pt x 106.6719pt.
-<our_method_decoding.png, id=96, 1215.54124pt x 350.30875pt>
+<our_method_decoding.png, id=94, 1215.54124pt x 350.30875pt>
 File: our_method_decoding.png Graphic file (type png)
 <use our_method_decoding.png>
 Package pdftex.def Info: our_method_decoding.png  used on input line 110.
 (pdftex.def)             Requested size: 397.48499pt x 114.54922pt.
-<random_tokens_decoding.png, id=97, 1225.57875pt x 332.24126pt>
+<random_tokens_decoding.png, id=95, 1225.57875pt x 332.24126pt>
 File: random_tokens_decoding.png Graphic file (type png)
 <use random_tokens_decoding.png>
 Package pdftex.def Info: random_tokens_decoding.png  used on input line 117.
@@ -605,9 +605,6 @@ Package pdftex.def Info: random_tokens_decoding.png  used on input line 117.
 
  <./greedy_decoding.png> <./rank2_decoding.png> <./our_method_decoding.png> <./
 random_tokens_decoding.png>]) [6] [7] [8] (./submission_neurips.aux)
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
 Package rerunfilecheck Info: File `submission_neurips.out' has not changed.
 (rerunfilecheck)             Checksum: 282FAABF2C30F138ED926D56737CCFE7;1592.
  ) 
@@ -625,10 +622,10 @@ r/.texlive2021/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk></usr/share
 mf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/t
 ype1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/
 utmri8a.pfb>
-Output written on submission_neurips.pdf (8 pages, 430009 bytes).
+Output written on submission_neurips.pdf (8 pages, 429206 bytes).
 PDF statistics:
- 235 PDF objects out of 1000 (max. 8388607)
- 159 compressed objects within 2 object streams
+ 230 PDF objects out of 1000 (max. 8388607)
+ 157 compressed objects within 2 object streams
  50 named destinations out of 1000 (max. 500000)
  36983 words of extra memory for PDF output out of 42996 (max. 10000000)
 
