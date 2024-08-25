@@ -1,0 +1,41 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Wei et~al.(2022)Wei, Wang, Schuurmans, Bosma, Ichter, Xia, Zhao, Zhu,
+  and Zhou]{wei2022chain}
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia,
+  Ed~Zhao, Sifei Zhu, and Denny Zhou.
+\newblock Chain-of-thought prompting elicits reasoning in large language
+  models.
+\newblock \emph{arXiv preprint arXiv:2201.11903}, 2022.
+\newblock URL \url{https://arxiv.org/abs/2201.11903}.
+
+\bibitem[Pfau et~al.(2023)Pfau, Merrill, and Bowman]{pfau2023let}
+Jacob Pfau, William Merrill, and Samuel~R Bowman.
+\newblock Let's think dot by dot: Hidden computation in transformer language
+  models.
+\newblock \emph{arXiv preprint arXiv:2404.15758}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2404.15758}.
+
+\bibitem[Touvron et~al.(2023)Touvron, Lavril, Izacard, Martinet, Lachaux,
+  Lacroix, Rozi{\`e}re, Goyal, Hambro, Azhar, Rodriguez, Joulin, Grave, and
+  Lample]{touvron2023llama}
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne
+  Lachaux, Timoth{\'e}e Lacroix, Baptiste Rozi{\`e}re, Naman Goyal, Eric
+  Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin, Edouard Grave, and
+  Guillaume Lample.
+\newblock {LLaMA}: Open and efficient foundation language models.
+\newblock \emph{arXiv preprint arXiv:2302.13971}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2302.13971}.
+
+\bibitem[nostalgebraist(2020)]{nostalgebraist2020interpreting}
+nostalgebraist.
+\newblock Interpreting {GPT}: the logit lens.
+\newblock \url{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/}, 2020.
+\newblock Accessed: 2024-04-25.
+
+\end{thebibliography}
