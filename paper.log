@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2023.10.18)  28 AUG 2024 19:34
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2023.10.18)  28 AUG 2024 19:40
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -694,8 +694,7 @@ Package: ltcaption 2013/06/09 v1.4-94 longtable captions (AR)
 ))
 \c@subfigure=\count123
 \c@subtable=\count124
-)
-No file paper.aux.
+) (./paper.aux)
 \openout1 = `paper.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 22.
@@ -756,6 +755,8 @@ Package: gettitlestring 2016/05/16 v1.5 Cleanup title references (HO)
 LaTeX Info: Redefining \ref on input line 22.
 LaTeX Info: Redefining \pageref on input line 22.
 LaTeX Info: Redefining \nameref on input line 22.
+
+(./paper.out) (./paper.out)
 \@outlinefile=\write4
 \openout4 = `paper.out'.
 
@@ -778,14 +779,14 @@ File: t1cmtt.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 ) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-<hidden_tokens_percentage_by_layer.png, id=20, 714.7503pt x 648.9846pt>
+<hidden_tokens_percentage_by_layer.png, id=65, 714.7503pt x 648.9846pt>
 File: hidden_tokens_percentage_by_layer.png Graphic file (type png)
 <use hidden_tokens_percentage_by_layer.png>
 Package pdftex.def Info: hidden_tokens_percentage_by_layer.png  used on input l
 ine 56.
 (pdftex.def)             Requested size: 345.0pt x 313.26184pt.
  [2]
-<token_comparison_percentages.png, id=30, 714.7503pt x 498.663pt>
+<token_comparison_percentages.png, id=71, 714.7503pt x 498.663pt>
 File: token_comparison_percentages.png Graphic file (type png)
 <use token_comparison_percentages.png>
 Package pdftex.def Info: token_comparison_percentages.png  used on input line 7
@@ -795,22 +796,22 @@ Package pdftex.def Info: token_comparison_percentages.png  used on input line 7
 es.png>] [5
 
 ]
-<greedy_decoding.png, id=52, 1241.63875pt x 324.21124pt>
+<greedy_decoding.png, id=89, 1241.63875pt x 324.21124pt>
 File: greedy_decoding.png Graphic file (type png)
 <use greedy_decoding.png>
 Package pdftex.def Info: greedy_decoding.png  used on input line 89.
 (pdftex.def)             Requested size: 344.9851pt x 90.081pt.
-<rank2_decoding.png, id=53, 1215.54124pt x 326.21875pt>
+<rank2_decoding.png, id=90, 1215.54124pt x 326.21875pt>
 File: rank2_decoding.png Graphic file (type png)
 <use rank2_decoding.png>
 Package pdftex.def Info: rank2_decoding.png  used on input line 95.
 (pdftex.def)             Requested size: 344.98615pt x 92.58504pt.
-<our_method_decoding.png, id=54, 1215.54124pt x 350.30875pt>
+<our_method_decoding.png, id=91, 1215.54124pt x 350.30875pt>
 File: our_method_decoding.png Graphic file (type png)
 <use our_method_decoding.png>
 Package pdftex.def Info: our_method_decoding.png  used on input line 101.
 (pdftex.def)             Requested size: 344.98615pt x 99.42209pt.
-<random_tokens_decoding.png, id=55, 1225.57875pt x 332.24126pt>
+<random_tokens_decoding.png, id=92, 1225.57875pt x 332.24126pt>
 File: random_tokens_decoding.png Graphic file (type png)
 <use random_tokens_decoding.png>
 Package pdftex.def Info: random_tokens_decoding.png  used on input line 107.
@@ -833,18 +834,18 @@ Package rerunfilecheck Warning: File `paper.out' has changed.
 (rerunfilecheck)                or use package `bookmark'.
 
 Package rerunfilecheck Info: Checksums for `paper.out':
-(rerunfilecheck)             Before: <no file>
-(rerunfilecheck)             After:  F88FE11A7631F9752F1D427018F1F8A1;770.
+(rerunfilecheck)             Before: F88FE11A7631F9752F1D427018F1F8A1;770
+(rerunfilecheck)             After:  876C4430F9A1796693C89BA28C5E1586;783.
 
 LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 130.
  ) 
 Here is how much of TeX's memory you used:
- 9741 strings out of 492982
- 152819 string characters out of 6134895
- 241754 words of memory out of 5000000
- 13124 multiletter control sequences out of 15000+600000
+ 9760 strings out of 492982
+ 153038 string characters out of 6134895
+ 242483 words of memory out of 5000000
+ 13137 multiletter control sequences out of 15000+600000
  14753 words of font info for 41 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  59i,6n,94p,909b,430s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -855,10 +856,10 @@ m-super/sfbx1200.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfbx1440.pfb
 onts/type1/public/cm-super/sfrm1000.pfb></usr/share/texmf/fonts/type1/public/cm
 -super/sfrm1200.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1728.pfb>
 </usr/share/texmf/fonts/type1/public/cm-super/sftt1200.pfb>
-Output written on paper.pdf (7 pages, 508039 bytes).
+Output written on paper.pdf (7 pages, 509134 bytes).
 PDF statistics:
- 116 PDF objects out of 1000 (max. 8388607)
- 86 compressed objects within 1 object stream
+ 154 PDF objects out of 1000 (max. 8388607)
+ 123 compressed objects within 2 object streams
  28 named destinations out of 1000 (max. 500000)
- 31 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 127 words of extra memory for PDF output out of 10000 (max. 10000000)
 

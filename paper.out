@@ -1,7 +1,7 @@
 \BOOKMARK [1][-]{section.1}{Introduction}{}% 1
 \BOOKMARK [1][-]{section.2}{Background}{}% 2
 \BOOKMARK [2][-]{subsection.2.1}{The 3SUM Task}{section.2}% 3
-\BOOKMARK [2][-]{subsection.2.2}{Hidden Chain-of-Thought}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.2}{Chain-of-Thought using Filler Tokens}{section.2}% 4
 \BOOKMARK [1][-]{section.3}{Methodology}{}% 5
 \BOOKMARK [1][-]{section.4}{Results and Discussion}{}% 6
 \BOOKMARK [2][-]{subsection.4.1}{Layer-wise Analysis}{section.4}% 7
