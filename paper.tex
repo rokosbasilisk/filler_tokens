@@ -14,7 +14,7 @@
 \usepackage{graphicx}
 \usepackage{caption}
 
-\title{Let's Decrypt Dot by Dot: Decoding Hidden Computation in Transformer Language Models}
+\title{Understanding Hidden Computations in Chain-of-Thought Reasoning}
 \author{Aryasomayajula Ram Bharadwaj\\
 Independent Researcher\\
 \texttt{ram.bharadwaj.arya@gmail.com}}
@@ -24,7 +24,7 @@ Independent Researcher\\
 \maketitle
 
 \begin{abstract}
-Recent work has shown that transformer models can perform complex reasoning tasks using Chain-of-Thought (COT) prompting, even when the COT is replaced with hidden characters. This paper investigates methods to decode these hidden computations, focusing on the 3SUM task. We analyze a 34M parameter LLaMA model trained on hidden COT sequences and propose a novel decoding method that successfully recovers the original COT. Our findings provide insights into how transformers encode and process information in hidden COT sequences, offering new perspectives on model interpretability and the nature of computation in language models.
+Recent work has shown that transformer models can perform complex reasoning tasks using Chain-of-Thought (COT) prompting, even when the COT is replaced with hidden characters. This paper attempts to investigates methods to decode these hidden computations, focusing on the 3SUM task. We analyze a 34M parameter LLaMA model trained on hidden COT sequences and propose a novel decoding method that successfully eliminates the hidden tokens in the original COT without sacrificing the accuracy. Our findings provide insights into how transformers encode and process information in hidden COT sequences, offering new perspectives on model interpretability and the nature of computation in language models.
 
 \end{abstract}
 
@@ -60,7 +60,7 @@ For this analysis, we employed nostalgebraist's logit lens method [3].
 
 
 \subsection{Token Rank Analysis}
-The top-ranked token was consistently the hidden character ("."), while lower-ranked tokens revealed the original, non-hidden COT sequences. This supports the hypothesis that the model replaces all computation with hidden tokens on top while keeping the original computation intact underneath. We have provided sample a sample snapshot of sequences decoded at each layer for both the top (rank-1) and rank-2 tokens in the appendix section.
+The top-ranked token was consistently the hidden character ("."), while lower-ranked tokens revealed the original, non-hidden COT sequences. This supports the hypothesis that the model replaces all computation with hidden tokens on top while keeping the original computation intact underneath. We have provided a sample snapshot of sequences decoded at each layer for both the top (rank-1) and rank-2 tokens in the appendix section.
 
 \subsection{Modified Greedy Decoding Algorithm}
 Based on the observations made in the token rank analysis, We implemented a modified greedy autoregressive decoding method. The steps include: performing standard greedy decoding, selecting the second-highest probability token when encountering a hidden token, and continuing this process for the entire sequence. This resulted in a 100\% match in 3SUM task results with and without hidden tokens. To test the effectiveness of this method, we have also compared this with replacing the hidden token with randomly sampled token instead of the next highest (rank-2) token. The percentages of the original and these modified decoding methods are visualized as plots below. 
