@@ -1,0 +1,16 @@
+{"time":"2024-10-16T21:09:35.503261254+05:30","level":"INFO","msg":"using version","core version":"0.18.3"}
+{"time":"2024-10-16T21:09:35.503274414+05:30","level":"INFO","msg":"created symlink","path":"/home/oppenheimer/projects/filler_tokens/wandb/offline-run-20241016_210935-45h1ujmy/logs/debug-core.log"}
+{"time":"2024-10-16T21:09:35.506646575+05:30","level":"INFO","msg":"created new stream","id":"45h1ujmy"}
+{"time":"2024-10-16T21:09:35.506668296+05:30","level":"INFO","msg":"stream: started","id":"45h1ujmy"}
+{"time":"2024-10-16T21:09:35.506689196+05:30","level":"INFO","msg":"sender: started","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:35.506683426+05:30","level":"INFO","msg":"handler: started","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:35.506680936+05:30","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:35.511383921+05:30","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-16T21:09:35.552247731+05:30","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-10-16T21:09:38.221363556+05:30","level":"INFO","msg":"stream: closing","id":"45h1ujmy"}
+{"time":"2024-10-16T21:09:38.221386196+05:30","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-10-16T21:09:38.223463633+05:30","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-10-16T21:09:38.223625644+05:30","level":"INFO","msg":"handler: closed","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:38.223646184+05:30","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:38.223679224+05:30","level":"INFO","msg":"sender: closed","stream_id":{"value":"45h1ujmy"}}
+{"time":"2024-10-16T21:09:38.223703844+05:30","level":"INFO","msg":"stream: closed","id":"45h1ujmy"}

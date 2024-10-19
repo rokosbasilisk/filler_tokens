@@ -1,0 +1,1474 @@
+Directory Structure:
+-------------------
+/ 
+├── __init__.py
+├── match2.py
+├── match3.py
+├── train_match2.py
+├── train_match3.py
+└── utils.py
+
+File Contents:
+--------------
+File: ./match2.py
+--------------------------------------------------
+Content of ./match2.py:
+import numpy as np
+from torch.utils.data import Dataset
+import torch
+from utils import dump_dataset_to_csv
+import os
+import datetime
+import json
+
+
+class Match2():
+    '''
+    Class for generating Match2 instances.
+    Transform_inputs are the decoded inputs, inputs are the encrypted inputs.
+    '''
+
+    def __init__(self, dimension, mod, length, transform=None, inverse_transform=None):
+        self.dimension = dimension
+        self.mod = mod
+        self.length = length
+        self.transform = transform
+        self.inverse_transform = inverse_transform
+
+        self.random = np.random.default_rng()
+    
+    def get_corrupted_instance(self, corruption_rate=4/3, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+        _, transform_inputs, _ = self.get_true_instance()
+        corruptions = self.random.geometric(1/corruption_rate)
+        corruptions = np.minimum(corruptions, self.length)
+        columns = self.random.integers(0, self.dimension, size=corruptions)
+        transform_inputs[:corruptions,columns] = self.random.integers(0, self.mod, size=(corruptions,))
+        rng.shuffle(transform_inputs)
+        inputs = self.inverse_transform(transform_inputs)
+        solution = self.solve(transform_inputs)
+        return inputs, transform_inputs, solution
+
+    def get_true_instance(self):
+        # Note that this draws from a subset of the space of all possible solutions, since repeated matches are not allowed -- probs ok since neglected subset is smaller by O(mod^dim/len)
+        transform_inputs = self.random.integers(0, self.mod, size=(self.length//2,self.dimension))
+        inverses = np.mod(self.mod-transform_inputs, self.mod)
+        transform_inputs = np.concatenate([transform_inputs, inverses], axis=0)
+        if len(transform_inputs) < self.length:
+            transform_inputs = np.concatenate([transform_inputs, transform_inputs[:1,:]], axis=0)
+        self.random.shuffle(transform_inputs)
+        inputs = self.inverse_transform(transform_inputs)
+        return inputs, transform_inputs, [1 for _ in inputs]
+    
+    def solve(self, inputs):
+        inverse = self.mod - inputs
+        inverse = np.mod(inverse, self.mod)
+        inputs_set = set([tuple(row) for row in inputs])
+        inverse_present = [tuple(row) in inputs_set for row in inverse]
+        return inverse_present
+
+RNG = np.random.default_rng()
+TRANSFORM_SEQS = RNG.integers(0, 10, size=(10,100)) #Note this should be fixed to allow for arbitrary data complexity
+def lookup_transform(length, dim, transform_ind, mod):# offset, mod):
+    transform_seqs = list(TRANSFORM_SEQS[transform_ind,:length*mod])
+    def transform(inputs):
+        inputs = inputs.copy()
+        all_inds = inputs.shape[0]*inputs.shape[1]
+        for i in range(all_inds):
+            inputs[i//dim,i%dim] = transform_seqs[i]+inputs[i//dim,i%dim]
+        inputs = np.mod(inputs, mod)
+        return inputs
+    
+    def inverse_transform(transform_inputs):
+        transform_inputs = transform_inputs.copy()
+        all_inds = transform_inputs.shape[0]*transform_inputs.shape[1]
+        for i in range(all_inds):
+            transform_inputs[i//dim,i%dim] = -transform_seqs[i]+transform_inputs[i//dim,i%dim]
+        transform_inputs = np.mod(transform_inputs, mod)
+        return transform_inputs
+
+    return transform, inverse_transform
+
+
+def random_lookup_params(length, dimension, mod, rng=None):
+    if rng is None:
+        rng = np.random.default_rng() 
+    transform_ind = rng.integers(0, 10) #TODO generalize
+    # offset = rng.integers(0, length-1)
+    return length, dimension, transform_ind, mod#offset, mod
+
+def identity_transform(dummy, mod):
+    '''
+    '''
+    def transform(inputs):
+        return inputs
+    
+    def inverse_transform(transform_inputs):
+        return transform_inputs
+    return transform, inverse_transform
+
+
+def cat_row(row):
+    return ''.join([str(x) for x in row])
+
+
+def b10_notransform_control_string(inputs, transform_inputs, solution, transform_params):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' L' + str(sum(solution))
+    return st
+
+def b10_basic_string(inputs, transform_inputs, solution, transform_params, rng=None, mod=10):
+    if rng is None:
+        rng = np.random.default_rng()
+    #CoT like cot string and includes the transform
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' T '
+    st += ' '.join([str(x) for x in transform_params[:-1]]) #drop final param since that's mod which is fixed
+    st += ' ' + ' '.join([cat_row(inputs[r])+' ' +cat_row(row) for r,row in enumerate(transform_inputs[:2])])
+    st += ' ' + cat_row(np.mod(transform_inputs[0] + transform_inputs[1],mod))
+    for r,row in enumerate(transform_inputs[2:-1]):
+        ind = r+2
+        if rng.binomial(1, 0.5) or not solution[ind]:
+            st += ' ' + ' '.join([cat_row(inputs[ind])+' ' +cat_row(row)])
+        else:
+            st += ' ' + ' '.join([cat_row(inputs[ind])+' ' +cat_row(np.mod(mod-row, mod))])
+    st += ' L' + str(sum(solution))
+    # print(transform_inputs)
+    # print(solution)
+    return st
+
+def b10_repeat_filler_string(inputs, transform_inputs, solution, transform_params):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' T '
+    st += ' '.join([str(x) for x in transform_params[:-1]]) #drop final param since that's mod which is fixed
+    st += ' ' + ' '.join([cat_row(row)+' A' for r,row in enumerate(inputs[:2])])
+    st += ' A' # For sum supervision
+    for r,row in enumerate(inputs[2:-1]):
+        ind = r+2
+        st += ' ' + ' '.join([cat_row(row)+' A' ])
+    st += ' L' + str(sum(solution))
+    # print(transform_inputs)
+    # print(solution)
+    return st
+
+def b10_no_filler_string(inputs, transform_inputs, solution, transform_params):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' T '
+    st += ' '.join([str(x) for x in transform_params[:-1]])
+    st += ' L' + str(sum(solution))
+    return st
+
+STRING_FUNCTION_MAPPING = {
+    'b10_basic': b10_basic_string,
+    'b10_repeat': b10_repeat_filler_string,
+    'b10_no_filler': b10_no_filler_string
+    }
+
+
+
+def generate_sample(length, dimension, mod, transform, type='True', corruption_rate=4/3, rng=None):
+    if transform=='lookup':
+        transform_params = random_lookup_params(length, dimension, mod, rng)
+        transform, inverse_transform = lookup_transform(*transform_params)
+        transform_params = transform_params[2:] #drop first two params since they're fixed
+    elif transform=='identity':
+        transform_params = (0, mod)
+        transform, inverse_transform = identity_transform(*transform_params)
+    else:
+        raise ValueError('transform must be lookup or identity')
+    m2 = Match2(dimension, mod, length, transform, inverse_transform)
+    
+    if type=='True':
+        inputs, transform_inputs, solution = m2.get_true_instance()
+    elif type=='Corrupted':
+        inputs, transform_inputs, solution = m2.get_corrupted_instance(corruption_rate=corruption_rate, rng=rng)
+    else:
+        raise ValueError('type must be True or Corrupted')
+    
+    return inputs, transform_inputs, solution, transform_params
+
+
+def GenerateMatch2Dataset(name, train_samples, test_samples,
+                          dimension, mod, length, 
+                          true_instance_rate=0.5, cot_rate=0.5, no_filler_rate=0, corruption_rate=4/3,
+                          transform='lookup', 
+                          filler_to_string=b10_repeat_filler_string, cot_to_string=b10_basic_string, no_filler_to_string=b10_no_filler_string,
+                          data_path='./data/'):
+    """
+    Generate a dataset for the Match2 class.
+    
+    Args:
+    - name (str): Name of the dataset
+    - train_samples (int): Number of training samples to generate
+    - test_samples (int): Number of test samples to generate
+    - dimension, mod, length: Parameters for the Match2 class
+    - true_instance_rate (float): Rate at which true instances should be used
+    
+    Returns:
+    - None
+    """
+    if 'b10' in ''.join([filler_to_string.__name__, cot_to_string.__name__, no_filler_to_string.__name__]) and mod>10:
+        raise ValueError('Base 10 string functions only work for mod<=10')
+    randomizer = np.random.default_rng()
+    corruption_vec = randomizer.binomial(1, true_instance_rate, size=train_samples+test_samples)
+    corruption_vec = np.where(corruption_vec==1, 'True', 'Corrupted')
+    assert cot_rate + no_filler_rate <= 1
+    filler_vec = randomizer.choice([0, 1, 2], p=[cot_rate, 1-cot_rate-no_filler_rate, no_filler_rate], size=train_samples+test_samples) #0 is cot, 1 is filler, 2 is no filler
+
+    train_dataset = [generate_sample(length, dimension, mod, transform, type=corruption_vec[i], corruption_rate=corruption_rate, rng=randomizer) for i in range(train_samples)]
+    for i, sample in enumerate(train_dataset):
+        if filler_vec[i] == 0:
+            train_dataset[i] = cot_to_string(*sample, rng=randomizer, mod=mod) #CoT like cot string includes the transform
+        elif filler_vec[i] == 1:
+            train_dataset[i] = filler_to_string(*sample) #filler like string
+        else:
+            train_dataset[i] = no_filler_to_string(*sample) #No filler and no cot i.e. straight to answer
+
+    test_dataset = [generate_sample(length, dimension, mod, transform, type=corruption_vec[i], corruption_rate=corruption_rate, rng=randomizer) for i in range(train_samples, train_samples+test_samples)]
+    for i, sample in enumerate(test_dataset):
+        j = i+train_samples
+        if filler_vec[j] == 0:
+            test_dataset[i] = cot_to_string(*sample, rng=randomizer, mod=mod)
+        elif filler_vec[j] == 1:
+            test_dataset[i] = filler_to_string(*sample)
+        else:
+            test_dataset[i] = no_filler_to_string(*sample)
+
+    # Save hyperparameters
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    if transform=='lookup':
+        max_params = (10,)#length) #TODO generalize
+    elif transform=='identity':
+        max_params = (1,)
+    else:
+        raise NotImplementedError('Only translate and identity transforms implemented so far')
+    hyperparameters_filename = f"args_{name}_{today}.json"
+    args = {
+        "name": name,
+        "train_samples": train_samples,
+        "test_samples": test_samples,
+        "dimension": dimension,
+        "mod": mod,
+        "length": length,
+        "true_instance_rate": true_instance_rate,
+        "transform": transform,
+        "max_transform_params": max_params,
+        "filler": filler_to_string.__name__,
+        "cot": cot_to_string.__name__,
+        "no filler": no_filler_to_string.__name__
+    }
+
+    with open(os.path.join(data_path, hyperparameters_filename), 'w') as f:
+        json.dump(args, f)
+        
+    train_desc = f"trainset_{today}.csv"
+    dump_dataset_to_csv(train_dataset, os.path.join(data_path, name+'_'+train_desc))
+    
+    test_desc = f"testset_{today}.csv"
+    dump_dataset_to_csv(test_dataset, os.path.join(data_path, name+'_'+test_desc))
+    
+    return
+
+
+class Match2VectorDataset(Dataset):
+    def __init__(self, dataframe, length, tuple_len, mod, transform_max, mask,):
+        self.tuple_len = tuple_len
+        self.mod = mod
+        self.length = length #sequence length, used for task label encoding throughout
+        self.transform_max = transform_max
+        self.num_transform_params = len(transform_max)
+        self.mask = mask
+        self.label_dim = self.length + self.tuple_len * self.mod + 3 # 3 to include EOS, 'A' (i.e. filler token), and the masking flag dim
+        self.input_dim = self.length + self.tuple_len * self.mod + 3 + sum(self.transform_max) + len(self.transform_max)
+        self.tf_dims = (1, self.length)
+
+        self.dataframe = dataframe
+        self.max_len = dataframe['text'].str.split().apply(len).max()
+
+        #Validate results:
+        print('validate encodings')
+        # print('encoded input 0', self.input_ids[0])
+        print('raw input 0', dataframe.loc[0,'text'])
+        # print('encoded label 0', self.labels[0])
+        print('encoded sample 0', self.__getitem__(0))
+        for i in range(3):
+            print('raw input 0', dataframe.loc[i,'text'])
+            in_dict = self.__getitem__(i)
+            tensor_in, tensor_label = in_dict['input_ids'], in_dict['labels']
+            nonzero_indices = torch.nonzero(tensor_in, as_tuple=True)
+            nonzero_indices = [(a.item(), b.item()) for a,b in list(zip(nonzero_indices[0], nonzero_indices[1]))]
+            print(f'non-zero inputs {i}', nonzero_indices)
+            nonzero_indices = torch.nonzero(tensor_label, as_tuple=True)
+            nonzero_indices = [(a.item(), b.item()) for a,b in list(zip(nonzero_indices[0], nonzero_indices[1]))]
+            print(f'non-zero labels {i}', nonzero_indices)
+
+    def _tensorize_str(self, str):
+        '''
+        Dimensions are as follows (all ranges are inclusive)
+        0: EOS
+        1-len+1: task label
+        len+2-tuple_len*mod+len+1: tuple encodings
+        '''
+        tensor = torch.zeros(self.input_dim,)
+        if self.tuple_len==1:
+            raise NotImplementedError('Tuple length 1 not implemented')
+        elif str=='A': #Assumed to be filler
+            tensor[-2] = 1
+        elif 'L' in str: #on 'L' we assume it's the label  
+            tensor[1 + int(str[1:])] = 1 #drop the 'L'
+        else:
+            for c, char in enumerate(str):
+                tensor[1 + self.length + 2 + c * self.mod + int(char)] = 1 #1 to skip EOS and self.length+2 for task label
+        return tensor
+    
+    def _tensorize_transform(self, transform_list):
+        tensor = torch.zeros(self.input_dim,)
+        offset = 1 + self.length + 2 + self.tuple_len * self.mod
+        for c, char in enumerate(transform_list):
+            tensor[offset + int(char)] = 1
+            offset += self.transform_max[c] + 1
+        return tensor
+
+    def tensorize_labels_worker(self, chunk):
+        '''
+        Dimensions are as follows (all ranges are inclusive):
+        0: EOS
+        1-len+1: task label
+        len+2-tuple_len*mod+len+2: tuple encodings
+        -2: 'A' i.e. filler
+        -1: mask
+        This drops the first ' ' separated substring, i.e. assuming no BOS, and appends an EOS label at the end.
+        '''
+        sequences = []
+        sequences = torch.zeros(len(chunk), self.max_len, self.label_dim, dtype=torch.short)
+        for t,text in enumerate(chunk['text']):
+            t_found = 0
+            text = text.strip()
+            s = 0
+            text = text.split(' ')[1:] #offset for LM prediction
+            while s <  len(text):
+                str = text[s]
+                if str == 'T':
+                    sequences[t, s:s + self.num_transform_params + 1 , -1] = 1 #Always mask transform params
+                    s = s + self.num_transform_params #Note in this case s is incremented here and by 1 at the end of the loop
+                    t_found = 1
+                elif 'L' in str:
+                    sequences[t, s, 1 + int(str[1:])] = 1 
+                elif self.mask == 'Final' or (self.mask=='T' and t_found==0): # Final skips all labels below this point. 'T' conditionally skips.
+                    sequences[t, s, -1] = 1
+                elif 'A' in str:
+                    sequences[t, s, -2] = 1
+                else: #Not masked, so must be a tuple
+                    for c, char in enumerate(str):
+                        val = int(char)
+                        sequences[t, s, c * self.mod + val + 1 + self.length+1] = 1 #2 to skip the EOS
+                s += 1
+            sequences[t, s, 0] = 1 #EOS never masked
+            sequences[t, s + 1:, -1] = 1 #Post EOS always masked
+        return sequences
+
+    def tensorize_dataframe_worker(self, chunk):
+        sequences = torch.zeros(len(chunk), self.max_len, self.input_dim, dtype=torch.float16)
+        for t, text in enumerate(chunk['text']):
+            text = text.strip()
+            s = 0
+            text = text.split(' ')
+            while s <  len(text):
+                str = text[s]
+                if str == 'T':
+                    tens = self._tensorize_transform(text[s+1:s+self.num_transform_params+1])
+                    s = s + self.num_transform_params + 1
+                    sequences[t, s-1, :] = tens #Write transform params at end of correpsonding string indices, at 'T...' remain 0, all have masked labels
+                else:
+                    sequences[t, s, :] = self._tensorize_str(str)
+                    s += 1
+        return sequences
+
+
+    def __len__(self):
+        return len(self.dataframe)
+
+    def __getitem__(self, idx):
+        single_row_df = self.dataframe.iloc[idx:idx+1]
+        input_tensor = self.tensorize_dataframe_worker(single_row_df)
+        label_tensor = self.tensorize_labels_worker(single_row_df)
+        label_tensor.requires_grad_(False)
+        return {"input_ids": input_tensor[0].type(torch.float16), "labels": label_tensor[0].type(torch.float)}
+
+
+File: ./match3.py
+--------------------------------------------------
+Content of ./match3.py:
+import numpy as np
+import torch
+import json
+import datetime
+from src.utils import dump_dataset_to_csv
+from torch.utils.data import Dataset
+import os
+from tqdm import tqdm
+
+class Match3():
+    '''
+    '''
+    def __init__(self, dimension, mod, length, ):
+        self.dimension = dimension
+        self.mod = mod
+        self.length = length
+        self.random = np.random.default_rng()
+
+    def get_instance(self):
+        inputs = self.random.integers(0, self.mod, size=(self.length,self.dimension))
+        solution = self.solve(inputs)
+        return inputs, solution
+    
+    def get_corrupted_instance(self, corruption_rate=4/3, redo=True, dense=True, probabilistic=True, serial=False):
+        inputs = self.random.integers(0, self.mod, size=(2,self.dimension))
+        inverses = np.expand_dims(np.mod(self.mod-np.sum(inputs,axis=0), self.mod),0)
+        inputs = np.concatenate([inputs, inverses], axis=0)
+        corruptions = self.random.geometric(1/corruption_rate)
+        corruptions = np.minimum(corruptions, 3)
+        columns = self.random.integers(0, self.dimension, size=corruptions)
+        inputs[:corruptions,columns] = self.random.integers(0, self.mod, size=(corruptions,))
+        rest = self.random.integers(0, self.mod, size=(self.length-3,self.dimension))
+        inputs = np.concatenate([inputs, rest], axis=0)
+        self.random.shuffle(inputs)
+        if serial: 
+            solution = self.serial_solve(inputs)
+        elif dense and probabilistic: 
+            solution = self.probabilistic_dense_solve(inputs)
+        elif dense:
+            solution = self.dense_solve(inputs)
+        else: solution = self.solve(inputs)
+        if (dense and not serial and True in [s for _,s in solution]) or (not dense and solution) or (serial and solution[-1]=='True'):
+            inputs, solution = self.get_corrupted_instance(corruption_rate, redo, dense, probabilistic=probabilistic, serial=serial)
+        return inputs, solution
+
+    def get_true_instance(self, dense=True, probabilistic=True, serial=False):
+        # Uniform over correct inputs. p(a=i) is uniform over i and by symmetry so is any other tuple index.
+        inputs = self.random.integers(0, self.mod, size=(2,self.dimension))
+        inverses = np.expand_dims(np.mod(self.mod-np.sum(inputs,axis=0), self.mod),0)
+        inputs = np.concatenate([inputs, inverses], axis=0)
+        rest = self.random.integers(0, self.mod, size=(self.length-3,self.dimension))
+        inputs = np.concatenate([inputs, rest], axis=0)
+        self.random.shuffle(inputs)
+        if serial: return inputs, self.serial_solve(inputs)
+        elif not dense: return inputs, True
+        elif probabilistic: return inputs, self.probabilistic_dense_solve(inputs)
+        else: return inputs, self.dense_solve(inputs)
+        
+    def solve(self, inputs):
+        for t,tup in enumerate(inputs):
+            if t==self.length-1: return False
+            sums = inputs[t+1:,:] + tup
+            sums = np.mod(sums, self.mod)
+            inverses = np.mod(self.mod-sums, self.mod)
+            for i,inv in enumerate(inverses):
+                for c, cand in enumerate(inputs[t+1+i+1:,:]):
+                    if (cand==inv).all():
+                        return True
+    
+    def probabilistic_dense_solve(self, inputs):
+            # This version outputs a random match2 sum, or index of matched if it's matched
+            labels = []
+            for t,tup in enumerate(inputs):
+                if t==self.length-1:
+                    ind = self.random.choice(self.dimension)
+                    labels.append((str(t),'F'+str(sums[i][ind])))
+                    break
+
+                #enumerate over pairs of tuples, combine tup with all inputs after it
+                sums = inputs[t+1:,:] + tup
+                sums = np.mod(sums, self.mod)
+                inverses = np.mod(self.mod-sums, self.mod)
+                
+                #for each sum inverse, check if it exists in the remaining tuples (after both tup and other summand)
+                for i,inv in enumerate(inverses):
+                    found = -1
+                    offset = t+1+i+1
+                    for c, cand in enumerate(inputs[offset:,:]):
+                        if (cand==inv).all():
+                            found = offset + c
+                            break
+
+                    ind = self.random.choice(self.dimension)
+                    sum_ind = sums[i][ind]
+                    if self.random.binomial(1,0.5)==1: #Randomly include one position of the 2SUM summands
+                        if found!=-1: labels.append((str(t),'-'+str(found))) #'-' signifies match, positional encoding of 3rd summand reported
+                        else: labels.append((str(t),'F'+str(sum_ind))) #If no match found label includes one of the 2SUM digits
+                    else:
+                        if found!=-1: labels.append((str(i+t+1),'-'+str(found)))
+                        else: labels.append((str(i+t+1),'F'+str(sum_ind)))
+            return labels
+    
+    def serial_solve(self, inputs):
+        labels = [] 
+        first_digit_inputs = inputs[:,0]
+        candidates = []
+        three_sum = False
+        for d,dig in enumerate(first_digit_inputs[:-2]):
+            sums = first_digit_inputs[d+1:-1] + dig
+            sums = np.mod(sums, self.mod)
+            inverses = np.mod(self.mod-sums, self.mod)
+            
+            #for each sum inverse, check if it exists in the remaining digits
+            for i,inv in enumerate(inverses):
+                offset = d+1+i+1
+                for c, cand in enumerate(first_digit_inputs[offset:]):
+                    if cand==inv:
+                        candidates.append([d, d+i+1, offset + c])
+                        labels.extend([str(c)+'-' for c in candidates[-1]]) # Append positional index of matched summands (Solving this requires solving Match-3 in the 1D case)
+                        cot_dim = self.random.choice(self.dimension)
+                        labels.extend([str(inputs[c,cot_dim]) for c in candidates[-1]]) # Append a randomly chosen index from each summand (Solving this requires copying and projecting D-dimensional inputs to their coordinates)
+                        intermediate_sum = [np.mod(inputs[d,j]+inputs[d+i+1,j]+inputs[offset+c,j],self.mod) for j in range(1,self.dimension)]
+                        intermediate_sum = [str(c) for c in intermediate_sum]   
+                        for intermediate in intermediate_sum:
+                            labels.append(intermediate)
+                            if intermediate!='0':
+                                break
+                        if all([sum=='0' for sum in intermediate_sum]): 
+                            three_sum = True
+                            break
+                    if three_sum: break
+                if three_sum: break
+        labels.append(str(three_sum))
+        return labels
+
+
+def cat_row(row):
+    return ''.join([str(x) for x in row])
+
+def no_filler_parallel(inputs, solution):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P A ' + str(any(['-' in s[-1] for s in solution]))
+    return st
+
+def no_filler_serial(inputs, solution):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P A ' + solution[-1]
+    return st
+
+def dot_filler_serial(inputs, solution_list, num_filler,):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P '
+    st += '. '*num_filler
+    st += 'A ' + solution_list[-1]
+    return st
+
+def dot_filler_parallel(inputs, solution_list, num_filler,):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P '
+    st += '. '*num_filler
+    st += 'A ' + str(any(['-' in s[-1] for s in solution_list]))
+    return st
+
+def rand_cot(inputs, solution_list,): #rand_schedule_cot_string
+    '''
+    To string for CoT which randomly include one position of the 2SUM summands 
+    '''
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P '
+    for ind1,subsoln in solution_list: 
+        if subsoln[0]=='-':
+            st += ind1+'-'+' '+str(subsoln[1:])+'-'+' '
+        elif subsoln[0]=='F':
+            st += ind1+'-'+' '+subsoln[1:]+' '
+        else:
+            print(subsoln[-1])
+            raise ValueError('Unexpected subsoln')
+    st += 'A ' + str(any(['-' in s[-1] for s in solution_list]))
+    return st
+
+def serial_cot(inputs, solution_list,):
+    st = ' ' + ' '.join([cat_row(row) for row in inputs])
+    st += ' P '
+    for subsoln in solution_list[0:-1]: 
+        st += subsoln+' '
+    st += 'A ' + solution_list[-1]
+    return st
+
+STRING_FUNCTION_MAP = {
+        'rand_cot': rand_cot,
+        'serial': serial_cot,
+    }
+
+def GenerateMatch3Dataset(name, train_samples=int(1e4), test_samples=int(1e3),
+                          dimension=3, mod=10, length=7, 
+                          true_instance_rate=0.5, cot_rate=0.5, no_filler_rate=0, corruption_rate=4/3, 
+                          filler_to_string=None, cot_to_string=rand_cot, no_filler_to_string=None,
+                          data_path='./data/'):
+    """
+    Generate a dataset for the Match3 class.
+    
+    Args:
+    - name (str): Name of the dataset
+    - train_samples (int): Number of training samples to generate
+    - test_samples (int): Number of test samples to generate
+    - dimension, mod, length: Parameters for the Match3 class
+    - true_instance_rate (float): Rate at which true instances should be used
+    
+    Returns:
+    - None
+    """
+    if cot_to_string==rand_cot:
+        filler_to_string = dot_filler_parallel
+        no_filler_to_string = no_filler_parallel
+    elif cot_to_string==serial_cot:
+        filler_to_string = dot_filler_serial
+        no_filler_to_string = no_filler_serial
+    else:
+        raise ValueError('Unexpected cot_to_string')
+    randomizer = np.random.default_rng()
+    corruption_vec = randomizer.binomial(1, true_instance_rate, size=train_samples+test_samples)
+    assert cot_rate + no_filler_rate <= 1
+    filler_rate = 1-cot_rate-no_filler_rate
+    filler_vec = randomizer.choice([0, 1, 2], p=[cot_rate, filler_rate, no_filler_rate], size=train_samples+test_samples) #0 is cot, 1 is filler, 2 is no filler
+
+    matcher = Match3(dimension, mod, length)
+    filler_length = length**2
+
+    dataset = []
+    for i in tqdm(range(train_samples+test_samples)):
+        if corruption_vec[i] == 1:
+            sample = matcher.get_true_instance(dense=True, serial=(cot_to_string==serial_cot))
+        else:
+            sample = matcher.get_corrupted_instance(corruption_rate=corruption_rate, dense=True, serial=(cot_to_string==serial_cot))
+        dataset.append(sample)
+    
+    train_dataset, test_dataset = [], []
+    for i in tqdm(range(train_samples)):
+        sample = dataset[i]
+        if filler_vec[i] == 0:
+            train_dataset.append(cot_to_string(*sample)) #CoT like cot string includes the transform
+        elif filler_vec[i] == 1:
+            train_dataset.append(filler_to_string(*sample, num_filler=filler_length)) #filler like string
+        else:
+            train_dataset.append(no_filler_to_string(*sample)) #No filler and no cot i.e. straight to answer
+    for i in tqdm(range(train_samples, train_samples+test_samples)):
+        sample = dataset[i]
+        if filler_vec[i] == 0:
+            test_dataset.append(cot_to_string(*sample))
+        elif filler_vec[i] == 1:
+            test_dataset.append(filler_to_string(*sample, num_filler=filler_length))
+        else:
+            test_dataset.append(no_filler_to_string(*sample))
+
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    if cot_to_string==rand_cot and no_filler_rate!=1 and filler_rate!=0:
+        batch_to_type = 'dot_tf_batch_to_type'
+    else:
+        batch_to_type = None
+    hyperparameters_filename = f"args_{name}_{today}.json"
+    args = {
+        "name": name,
+        "train_samples": train_samples,
+        "test_samples": test_samples,
+        "dimension": dimension,
+        "mod": mod,
+        "length": length,
+        "true_instance_rate": true_instance_rate,
+        "cot_rate": cot_rate,
+        "no_filler_rate": no_filler_rate,
+        "corruption_rate": corruption_rate,
+        "filler": filler_to_string.__name__,
+        "cot": cot_to_string.__name__,
+        "no filler": no_filler_to_string.__name__,
+        "batch_to_type": batch_to_type
+    }
+
+    with open(os.path.join(data_path, hyperparameters_filename), 'w') as f:
+        json.dump(args, f)
+        
+    train_desc = f"trainset_{today}.csv"
+    dump_dataset_to_csv(train_dataset, os.path.join(data_path, name+'_'+train_desc))
+    
+    test_desc = f"testset_{today}.csv"
+    dump_dataset_to_csv(test_dataset, os.path.join(data_path, name+'_'+test_desc))
+    
+    return
+
+class Match3VectorDataset(Dataset):
+    def __init__(self, dataframe, tuple_len, data_len, mod, mask):
+        self.tuple_len = tuple_len
+        self.mod = mod
+        self.mask = mask
+        self.dataframe = dataframe
+        assert self.mask in ['P', 'Final'], 'Mask must be P or Final'
+        if self.mask=='P' and (~self.dataframe['text'].str.contains('P')).any():
+            print('Compatibility with legacy data in which P was not included in no filler sequences')
+            # Apply the transformation only if the condition is met
+            self.dataframe['text'] = self.dataframe['text'].apply(lambda x: x if 'P' in x else x.replace(' A', ' P A'))
+
+        self.data_len = data_len
+        self.max_len = dataframe['text'].str.split().apply(len).max() + 1
+
+        # First Pass: Create Word to Index Mapping
+        self.word_index_map = self.create_word_index_map(dataframe)
+        self.tf_dims = (self.word_index_map['True'], self.word_index_map['False'])
+
+        # Set input dimension based on mapping and digit handling
+        # This works whether or not we do tuple index encodings as filler coordination cots, if not using those the corresponding indices will just be unused
+        self.input_dim = len(self.word_index_map) + self.data_len + self.tuple_len * self.mod + self.data_len*2 
+        #Validate results:
+        print('validate encodings')
+        # print('encoded input 0', self.input_ids[0])
+        print('raw input 0', dataframe.loc[0,'text'])
+        # print('encoded label 0', self.labels[0])
+        print('encoded sample 0', self.__getitem__(0))
+
+    def create_word_index_map(self, dataframe):
+        unique_words = set()
+        for text in dataframe['text']:
+            for word in text.split():
+                if not word[0].isdigit() and word not in ['True', 'False']: #Includes filler tokens, final answer token, maybe end of input token too...
+                    unique_words.add(word)
+
+        word_index_map = {'True': 1, 'False': 2}
+
+        sorted_unique_words = sorted(unique_words)
+        offset = len(word_index_map) + 1  # Offset by the number of words already in the map
+        for i, word in enumerate(sorted_unique_words):
+            word_index_map[word] = i + offset
+
+        return word_index_map
+
+    def handle_digit_sequences(self, sequences, t, w, word):
+        offset = len(self.word_index_map)
+        if '-' in word: # Handle tuple index encodings
+            indices = [int(d) for d in word.split('-') if d!='']
+            for i,idx in enumerate(indices):
+                sequences[t, w, offset + i*self.data_len + idx] = 1
+        else:
+            if w<self.data_len: # Adds bespoke positional value for initial input tuples but doesn't for later CoT digits.
+                sequences[t, w, offset + w] = 1 #TODO  #Unique positional value appended fiddle with this REMOVE TO RELY ON POS EMBEDDING
+            for c, char in enumerate(word):
+                sequences[t, w, offset + self.data_len*2 + c * self.mod + int(char)] = 1  #Handles the digits in the tuples, and single digits in CoT
+    
+    def handle_digit_labels(self, sequences, t, w, word):
+        offset = len(self.word_index_map)
+        if '-' in word: # Handle tuple index encodings
+            indices = [int(d) for d in word.split('-') if d!='']
+            for i,idx in enumerate(indices):
+                sequences[t, w] = offset + i*self.data_len + idx
+        else:
+            for c, char in enumerate(word):
+                sequences[t, w] = offset + self.data_len*2 + c * self.mod + int(char) #Handles the digits in the tuples, and single digits in CoT
+                
+    def tensorize_inputs_worker(self, chunk):
+        sequences = torch.zeros(len(chunk), self.max_len, self.input_dim, dtype=torch.float16)
+        for t, text in enumerate(chunk['text']):
+            text = text.strip().split(' ')
+            for w, word in enumerate(text):
+                if word[0].isdigit():
+                    self.handle_digit_sequences(sequences, t, w, word)
+                else:
+                    index = self.word_index_map[word]
+                    if index != -1:
+                        sequences[t, w, index] = 1
+            sequences[t, w + 1:, 0] = 1  # EOS
+        return sequences
+    
+    def tensorize_labels_worker(self, chunk):
+        '''
+        Labels are determined based on the word index map. The mapping is as follows:
+        -100: mask
+        0: EOS
+        Indices from word_index_map correspond to their respective labels.
+        Additional handling for 'P' and 'Final' masking is done here.
+        '''
+        sequences = torch.zeros(len(chunk), self.max_len, dtype=torch.short)
+        for t, text in enumerate(chunk['text']):
+            text = text.strip().split(' ')
+            marker_found = False
+            for w, word in enumerate(text[1:]):
+                #Masking conditions met
+                if self.mask == 'Final' and not marker_found and word != 'A':
+                    sequences[t, w] = -100
+                    continue
+                elif self.mask == 'Final' and word == 'A':
+                    marker_found = True
+                    sequences[t, w] = -100
+                    continue
+                elif self.mask == 'P' and not marker_found and word != 'P':
+                    continue
+                elif self.mask == 'P' and word == 'P':
+                    marker_found = True
+                    sequences[t, :w+1] = -100
+                    continue
+                #Masking conditions not met:
+                if word in self.word_index_map:
+                    index = self.word_index_map[word]
+                    sequences[t, w] = index
+                elif word[0].isdigit():
+                    # Handle digit sequences as special cases
+                    self.handle_digit_labels(sequences, t, w, word)
+                else:
+                    raise ValueError(f'Unexpected word {word}')                
+            sequences[t, w + 1] = 0  # EOS
+            sequences[t, w + 2:] = -100  # Post EOS always masked
+        return sequences
+
+    def __len__(self):
+        return len(self.dataframe)
+
+    def __getitem__(self, idx):
+        single_row_df = self.dataframe.iloc[idx:idx+1]
+        input_tensor = self.tensorize_inputs_worker(single_row_df)
+        label_tensor = self.tensorize_labels_worker(single_row_df)
+        label_tensor.requires_grad_(False)
+        return {"input_ids": input_tensor[0].type(torch.float16), "labels": label_tensor[0].type(torch.int64)}
+
+
+File: ./train_match2.py
+--------------------------------------------------
+Content of ./train_match2.py:
+import torch
+from tqdm.auto import tqdm
+from torch import autocast
+import wandb
+import datetime
+from src.utils import masked_bce
+
+
+def match2_vector_eval_step(model, batch, TF_inds, loss):
+    inputs, labels = batch['input_ids'].to("cuda"), batch['labels'].to("cuda")
+    with torch.no_grad():
+        with autocast(device_type='cuda', dtype=torch.float16):
+            outputs = model(inputs)
+            loss = loss(outputs, labels) #Masks loss over values where final label dimension is 1
+
+            prediction_seq_locs = torch.where(labels[:,:,TF_inds[0]:TF_inds[1]+1] == 1) #get sequence locations where the match2 label is non-zero
+            m2_labels = torch.argmax(labels[prediction_seq_locs[0],prediction_seq_locs[1],TF_inds[0]:TF_inds[1]+1], dim=-1)
+            m2_preds = torch.argmax(outputs[prediction_seq_locs[0],prediction_seq_locs[1],TF_inds[0]:TF_inds[1]+1], dim=-1)
+            accuracy = torch.mean((m2_labels == m2_preds).float())
+
+    return {'log_loss':loss,'accuracy':accuracy}
+
+def match2_vector_eval_loop(model, eval_loader, TF_inds, loss):
+    model.eval()
+    total_log_loss, total_accuracy = 0, 0
+    total_steps = 0
+    for batch in tqdm(eval_loader, desc="Evaluating"):
+        batch_eval_dict = match2_vector_eval_step(model, batch, TF_inds, loss)
+        total_log_loss += batch_eval_dict['log_loss']
+        total_accuracy += batch_eval_dict['accuracy']
+        total_steps += 1
+    avg_log_loss = total_log_loss / total_steps
+    avg_accuracy = total_accuracy / total_steps
+    return {'log_loss':avg_log_loss, 'accuracy':avg_accuracy}
+
+def vector_train_loop(tf_inds, weight_labels, epochs, mpt, accumulation_factor, optim, lr_decay_on, no_wdb, checkpoint, max_grad_norm, base_path, initial_word, model, 
+                      epoch_steps, eval_steps, checkpoint_steps, train_data_loader, eval_data_loader, optimizer, decay_scheduler, scaler,):
+    loss_func = lambda outputs, labels: masked_bce(outputs, labels, reweight_final=weight_labels, tf_coords=tf_inds)
+    for e in range(epochs):
+        print(f'###### NEW EPOCH {e}')
+        for b,batch in enumerate(tqdm(train_data_loader, desc=f"Training")):                
+            model.train()
+            inputs = batch['input_ids'].to("cuda")
+            labels = batch['labels'].to("cuda")
+            if mpt:
+                with autocast(device_type='cuda', dtype=torch.float16):
+                    outputs = model(inputs)
+                    if b==0: print(f"memory used after FP GB {torch.cuda.max_memory_allocated('cuda') / (1e9):.3f}")
+                    loss = loss_func(outputs, labels,) #Masks loss over values where final label dimension is 1
+                scaler.scale(loss).backward()
+                if b==0: print(f"memory used after BWP GB {torch.cuda.max_memory_allocated('cuda') / (1e9):.3f}")
+                if (b+1) % accumulation_factor == 0:
+                    if optim=="adam":
+                        scaler.unscale_(optimizer)
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                    scaler.step(optimizer)
+                    scaler.update()
+                    if lr_decay_on: decay_scheduler.step()
+            else:
+                outputs = model(inputs_embeds=inputs, output_hidden_states=True)
+                loss = loss_func(outputs, labels)
+                loss.backward()
+                if (b+1) % accumulation_factor == 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                    optimizer.step()
+                    if lr_decay_on: decay_scheduler.step()
+            optimizer.zero_grad()
+
+        
+            if (b+1) % eval_steps ==0:
+                eval_metrics = match2_vector_eval_loop(model, eval_data_loader, tf_inds, loss_func)
+
+                print(f"Train Loss is {loss:.3f}")
+                for k,v in eval_metrics.items():
+                    print('eval metrics')
+                    print(f"{k} is {v:.3f}")
+                if not no_wdb:
+                    eval_metrics['step'] = b+e*len(train_data_loader)
+                    eval_metrics['train_loss'] = loss
+                    wandb.log(eval_metrics)
+                print(f"LR is {optimizer.param_groups[0]['lr']}")
+
+        if checkpoint: #end of epoch
+            today = datetime.datetime.now().strftime("%Y-%m-%d-%H")
+            model.save_pretrained(base_path+f"output_dir/{today}-{initial_word}-checkpoint-epoch-{e}-endofepoch")
+    today = datetime.datetime.now().strftime("%Y-%m-%d-%H")
+    model.save_pretrained(base_path+f"output_dir/{today}-{initial_word}-checkpoint-final")
+
+
+
+
+File: ./utils.py
+--------------------------------------------------
+Content of ./utils.py:
+from torch.nn.functional import softmax
+import csv
+import textwrap
+import torch
+import math
+import glob
+import os
+from torch.nn import BCEWithLogitsLoss
+import torch.nn as nn
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
+from torch.cuda.amp import GradScaler
+
+def train_steps(epochs, train_batch_size, num_evals, accumulation_factor, checkpoint, train_set):
+    epoch_steps = len(train_set) // train_batch_size
+    tot_opt_steps = epochs*epoch_steps
+    tot_fp = accumulation_factor*tot_opt_steps
+    if num_evals is None:num_evals = max(25, epochs) #default to 25 evals for short runs
+    eval_steps = accumulation_factor*epoch_steps//(num_evals//epochs) 
+    checkpoint_steps = accumulation_factor*epoch_steps//checkpoint if checkpoint else None
+    return epoch_steps,tot_opt_steps,tot_fp,eval_steps,checkpoint_steps
+
+
+def get_optimizer(optim, lr_decay_on, weight_decay, mpt, learning_rate, adam_beta1, adam_beta2, model, tot_opt_steps):
+    if optim=="adam":
+        optimizer = AdamW(model.parameters(), lr=learning_rate, betas=(adam_beta1, adam_beta2), weight_decay=weight_decay)
+    else:
+        raise ValueError("Invalid optimizer")
+    if lr_decay_on: 
+        def decay_rate(step):
+            warm = tot_opt_steps//20
+            if step<=warm:
+                return step/warm
+            else:
+                return 1-step/tot_opt_steps
+        decay_scheduler = LambdaLR(optimizer, decay_rate)
+
+    if mpt: scaler = GradScaler()
+    else: scaler = None
+    return optimizer,decay_scheduler,scaler
+
+CROSS_ENTROPY = nn.CrossEntropyLoss()
+def reshape_crossent(logits, labels):
+    logits = logits.view(-1, logits.shape[-1])
+    labels = labels.view(-1)
+    return CROSS_ENTROPY(logits, labels)
+
+BCE = BCEWithLogitsLoss(reduction='none')
+def masked_bce(logits, labels, reweight_final=0, tf_coords=(None,None)):
+    if reweight_final: assert tf_coords[0] is not None
+    losses = BCE(logits, labels)
+    mask = labels[:,:,-1]==1
+    masked_tot = torch.sum(mask)*labels.shape[2]
+    mask = mask.unsqueeze(-1).expand_as(losses)
+    losses = losses.masked_fill(mask,0.)
+    if reweight_final: 
+        losses[:,-2,tf_coords[0]:tf_coords[1]]*=reweight_final
+    num_indices = torch.prod(torch.tensor(losses.shape))
+    return torch.sum(losses)/(num_indices-masked_tot)
+
+
+class MultiLabelCausalTransformer(nn.Module):
+    # Takes as forward inputs a tensor of shape (batch_size, seq_len, input_dim)
+    def __init__(self, base_model, input_dim, output_dim):
+        super(MultiLabelCausalTransformer, self).__init__()
+        self.base_model = base_model
+        model_dim = self.base_model.config.hidden_size # Assuming base model's hidden size is model_dim. 
+        self.input_layer = nn.Linear(input_dim, model_dim)
+        self.output_layer = nn.Linear(model_dim, output_dim)
+
+    def forward(self, inputs):
+        inputs_embeds = self.input_layer(inputs)
+        outputs = self.base_model(inputs_embeds=inputs_embeds, output_hidden_states=True, return_dict=True)
+        last_hidden_state = outputs.hidden_states[-1]
+        output = self.output_layer(last_hidden_state)
+        return output
+
+    def save_pretrained(self, save_directory):
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
+        torch.save(self.state_dict(), os.path.join(save_directory, 'model_weights.pt'))
+
+    @classmethod
+    def from_pretrained(cls, base_model, save_directory, input_dim, output_dim):
+        model = cls(base_model=base_model, input_dim=input_dim, output_dim=output_dim)
+        model.load_state_dict(torch.load(os.path.join(save_directory, 'model_weights.pt')))
+        return model
+    
+    
+class InputEmbedCausalTransformer(nn.Module):
+    # Takes as forward inputs a tensor of shape (batch_size, seq_len, input_dim)
+    def __init__(self, base_model, input_dim,):
+        super(InputEmbedCausalTransformer, self).__init__()
+        self.base_model = base_model
+        model_dim = self.base_model.config.hidden_size # Assuming base model's hidden size is model_dim. 
+        self.input_layer = nn.Linear(input_dim, model_dim)
+
+    def forward(self, inputs):
+        inputs_embeds = self.input_layer(inputs)
+        return self.base_model(inputs_embeds=inputs_embeds,)
+
+    def save_pretrained(self, save_directory):
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
+        torch.save(self.state_dict(), os.path.join(save_directory, 'model_weights.pt'))
+
+    @classmethod
+    def from_pretrained(cls, base_model, save_directory, input_dim=None):
+        state_dict = torch.load(os.path.join(save_directory, 'model_weights.pt'))
+        prev_input_dim = state_dict['input_layer.weight'].shape[1]
+        model = cls(base_model=base_model, input_dim=prev_input_dim)
+        model.load_state_dict(state_dict)
+        if input_dim is not None:
+            model.input_layer = nn.Linear(input_dim, base_model.config.hidden_size)
+        return model
+
+ 
+def format_data_file_name(name, base_path):
+    if '/' in name:
+        return name
+    else:
+        return base_path+'data/'+name
+
+
+def dump_dataset_to_csv(dataset, output_file):
+    with open(output_file, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        for line in dataset:
+            csvwriter.writerow([line])
+
+def get_files_from_name(data_name, base_path):
+    list_of_files = glob.glob(base_path+'data/*') 
+    # Sort files by modification time
+    list_of_files.sort(key=os.path.getmtime)
+        
+    train_data = next((file for file in reversed(list_of_files) if ("train" in file and data_name in file)), None)
+    test_data = next((file for file in reversed(list_of_files) if ("test" in file and data_name in file)), None)
+    data_config = next((file for file in reversed(list_of_files) if ("args" in file and data_name in file)), None)
+    return train_data, test_data, data_config
+
+
+def pprint_model_predictions(labels, logits, width=120, n_chars=3):
+    '''
+    Pretty prints model predictions alongside true labels and input sequences.
+
+    Parameters:
+    - inputs: Tensor of input sequences.
+    - labels: Tensor of true labels for the sequences.
+    - logits: Tensor of model's logits for each sequence element.
+    - width: Width for the printed output to wrap around.
+    - n_chars: Number of characters to display per sequence element.
+    '''
+    probabilities = softmax(logits, dim=-1)
+    max_prob_indices = probabilities.argmax(dim=-1)
+    token_probs = probabilities.gather(dim=-1, index=labels.unsqueeze(-1)).squeeze(-1).numpy()
+
+    # Convert tensors to displayable format
+    labels_str = ['|'.join([str(int(id)).ljust(n_chars) for id in sequence]) for sequence in labels]
+    preds_str = ['|'.join([str(int(id)).ljust(n_chars) for id in sequence]) for sequence in max_prob_indices]
+    probs_str = ['|'.join([str(int(prob * 100)).ljust(n_chars) for prob in sequence_probs]) for sequence_probs in token_probs]
+
+    # Use textwrap to wrap the strings
+    for label_line, pred_line, prob_line in zip(labels_str, preds_str, probs_str):
+        wrapped_labels = textwrap.wrap(label_line, width=width)
+        wrapped_preds = textwrap.wrap(pred_line, width=width)
+        wrapped_probs = textwrap.wrap(prob_line, width=width)
+
+        for line in range(len(wrapped_labels)):
+            print('Label :', wrapped_labels[line])
+            print('Preds :', wrapped_preds[line])
+            print('Probs :', wrapped_probs[line])
+            print()  # Add an empty line between entries
+
+
+def pprint_logits(inputs, logits, tokenizer, width=120, n_chars=3):
+    '''
+    Pretty print logits for a single input
+
+    '''
+    char_space = ' '*n_chars
+    probabilities = softmax(logits, dim=-1)
+    # Get the indices of the tokens with maximum probability
+    max_prob_indices = probabilities.argmax(dim=-1)
+    next_input_ids = inputs[:,1:]
+    token_probs = probabilities.gather(dim=-1, index=next_input_ids.unsqueeze(-1)).squeeze(-1).cpu().numpy()[0]
+
+    input_tokens = [tokenizer.decode(id) for id in inputs[0]]
+    input_tokens = [token[:n_chars]+char_space[:max(0,n_chars-len(token))] for token in input_tokens]
+    tokens_str = '|'.join(input_tokens)
+
+    token_probs = [f"{int(prob*(100))}" for prob in token_probs]
+    token_probs = [char_space]+[prob+char_space[:max(0,n_chars-len(prob))] for prob in token_probs]
+    probs_str = '|'.join(token_probs)
+
+    # Decode the maximum probability token indices to get the corresponding tokens
+    max_prob_tokens = [tokenizer.decode(id) for id in max_prob_indices[0]]
+    max_prob_tokens = [char_space]+[token[:n_chars]+char_space[:max(0,n_chars-len(token))] for token in max_prob_tokens]
+    max_prob_tokens_str = '|'.join(max_prob_tokens)
+
+    # Use textwrap to wrap the strings
+    wrapped_tokens = textwrap.wrap(tokens_str, width=width)
+    wrapped_probs = textwrap.wrap(probs_str, width=width)
+    max_prob_tokens_str = textwrap.wrap(max_prob_tokens_str, width=width)
+
+    print('Note all tokens are truncated/padded to n_chars characters')
+    # Print the tokens and probabilities
+    for l, line in enumerate(wrapped_tokens):
+        print('Input: ', line)
+        print('Probs: ', wrapped_probs[l])
+        print('Top1 : ', max_prob_tokens_str[l])
+        print()  # Add an empty line between pairs of lines
+
+
+def initialize_pythia(module, dim, n_layers):
+    children = list(module.named_modules())
+    for name, mod in children[1:]:
+        if hasattr(mod, 'weight'):
+            if name in ['query_key_value', 'dense', 'dense_h_to_4h', 'embed_in', 'embed_out']:
+                torch.nn.init.normal_(mod.weight, mean=0.0, std=math.sqrt(2 / (5 * dim)))
+            elif name in ['dense_4h_to_h',]:
+                torch.nn.init.normal_(mod.weight, mean=0.0, std=2 / n_layers / math.sqrt(dim))
+        else:
+            initialize_pythia(mod, dim, n_layers)
+
+
+def copy_model(source_model, target_model, grads_off=False, num_layers=None):
+    '''
+    Copy weights from source_model to target_model (skip final layer). Models must have the same architecture, and dimensions. Target model may have more layers.
+    '''
+    target_children = list(target_model.named_modules())
+    for ind, source_mod_pair in enumerate(source_model.named_modules()):
+        name, source_mod = source_mod_pair
+        target_mod = target_children[ind][1]
+        if 'final' in name:
+            return
+        if num_layers and 'layers.'+str(num_layers) in name:
+            return
+        if hasattr(source_mod, 'weight'):
+            if hasattr(target_mod, 'weight'):
+                target_mod.weight.data.copy_(source_mod.weight.data)
+                if grads_off:
+                    target_mod.weight.requires_grad = False
+            else:
+                print('no weight')
+                print(target_children[ind][0], source_mod_pair[0])
+        if hasattr(source_mod, 'bias') and source_mod.bias is not None:
+            target_mod.bias.data.copy_(source_mod.bias.data)
+            if grads_off:
+                    target_mod.bias.requires_grad = False
+
+def freeze_model(model, num_layers):
+    '''
+    Freeze all layers except layers past num_layers
+    '''
+    found = False
+    model.requires_grad = False
+    for _, source_mod_pair in enumerate(model.named_modules()):
+        name, source_mod = source_mod_pair
+        if not found and 'layers.'+str(num_layers) in name:
+            found = True
+        elif not found or 'base_model' not in name: 
+            continue
+        print('Setting grads on for: ', name)
+        for param in source_mod.parameters():
+            param.requires_grad = True
+
+def remove_dots(df, filler_percentage):
+    
+    def remove_filler(text, filler_percentage):
+        filler = ' .'
+        count = text.count(filler)
+        remove_count = int(count * (1-filler_percentage))
+        new_text = text
+        for _ in range(remove_count):
+            new_text = new_text.replace(filler, '', 1)  # Replace first occurrence
+        return new_text
+    
+    df['text'] = df['text'].apply(lambda x: remove_filler(x, filler_percentage))
+    return df
+
+File: ./__init__.py
+--------------------------------------------------
+Content of ./__init__.py:
+from .match3 import Match3, GenerateMatch3Dataset, Match3VectorDataset
+
+File: ./train_match3.py
+--------------------------------------------------
+Content of ./train_match3.py:
+import torch
+from tqdm.auto import tqdm
+from torch import autocast
+import wandb
+import datetime
+import numpy as np
+
+from src.utils import reshape_crossent
+
+
+def vector_train_loop(
+    # Training control parameters
+    epochs, mpt, accumulation_factor, early_stop, no_wdb, checkpoint,
+    
+    # Model and data-related parameters
+    model, train_data_loader, eval_data_loader, tf_inds, batch_to_type, tf_label_inds,
+    
+    # Optimization parameters
+    optim, lr_decay_on, max_grad_norm, optimizer, decay_scheduler, scaler,
+    
+    # Miscellaneous and path parameters
+    base_path, run_name, eval_steps
+):
+    stop = False
+    tf = not batch_to_type is None
+    for e in range(epochs):
+        print(f'###### NEW EPOCH {e}')
+        for b,batch in enumerate(tqdm(train_data_loader, desc=f"Training")):                
+            model.train()
+            inputs = batch['input_ids'].to("cuda")
+            labels = batch['labels'].to("cuda")
+            if mpt:
+                with autocast(device_type='cuda', dtype=torch.float16):
+                    outputs = model(inputs)['logits']
+                    if b==0: print(f"memory used after FP GB {torch.cuda.max_memory_allocated('cuda') / (1e9):.3f}")
+                    loss = reshape_crossent(outputs, labels,) #Masks loss over values where label is -1
+                scaler.scale(loss).backward()
+                if b==0: print(f"memory used after BWP GB {torch.cuda.max_memory_allocated('cuda') / (1e9):.3f}")
+                if (b+1) % accumulation_factor == 0:
+                    if optim=="adam":
+                        scaler.unscale_(optimizer)
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                    scaler.step(optimizer)
+                    scaler.update()
+                    if lr_decay_on: decay_scheduler.step()
+            else:
+                with autocast(device_type='cuda', dtype=torch.float):
+                    outputs = model(inputs,)['logits']
+                    loss = reshape_crossent(outputs, labels)
+                    loss.backward()
+                    if (b+1) % accumulation_factor == 0:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                        optimizer.step()
+                        if lr_decay_on: decay_scheduler.step()
+            optimizer.zero_grad()
+
+        
+            if (b+1) % eval_steps ==0:
+                eval_metrics = match3_vector_eval_loop(model, eval_data_loader, tf_inds, reshape_crossent, tf, batch_to_type=batch_to_type, cot_tf_bounds=tf_label_inds)
+
+                print(f"Train Loss is {loss:.3f}")
+                for k,v in eval_metrics.items():
+                    if not v is None:
+                        print('eval metrics')
+                        print(f"{k} is {v:.3f}")
+                if not no_wdb:
+                    eval_metrics['step'] = b+e*len(train_data_loader)
+                    eval_metrics['train_loss'] = loss
+                    wandb.log(eval_metrics)
+                else:
+                    print(eval_metrics)
+                print(f"LR is {optimizer.param_groups[0]['lr']}")
+                if early_stop and eval_metrics['accuracy'] > 0.995:
+                    stop = True
+                    print('Early stopped due to high accuracy')
+                    break
+        if stop:
+            break
+        if checkpoint: #end of epoch
+            today = datetime.datetime.now().strftime("%Y-%m-%d-%H")
+            model.save_pretrained(base_path+f"output_dir/{today}-{run_name}-checkpoint-epoch-{e}-endofepoch")
+    today = datetime.datetime.now().strftime("%Y-%m-%d-%H")
+    model.save_pretrained(base_path+f"output_dir/{today}-{run_name}-checkpoint-final")
+
+
+def match3_vector_eval_loop(model, eval_loader, TF_inds, loss, tf=True, batch_to_type=None, cot_tf_bounds=None):
+
+    model.eval()
+    total_log_loss, total_accuracy, total_final_loss  = 0, 0, 0
+    if batch_to_type:
+        total_cot_pos_acc, positional_3sum_acc, cot_sums_acc = 0, 0, 0
+    total_steps = 0
+    ACC_AGGREGATE = {
+        'dot': [],
+        'cot': [],
+    }
+
+    for batch in tqdm(eval_loader, desc="Evaluating"):
+        batch_eval_dict = match3_vector_eval_step(model, batch, TF_inds, loss, tf, batch_to_type, cot_tf_bounds)
+        total_log_loss += batch_eval_dict.pop('log_loss')
+        total_accuracy += batch_eval_dict.pop('accuracy')
+        total_final_loss += batch_eval_dict.pop('final_loss')
+        if batch_to_type:
+            total_cot_pos_acc += batch_eval_dict.pop('cot_pos_acc')
+            positional_3sum_acc += batch_eval_dict.pop('positional_3sum_acc')
+            cot_sums_acc += batch_eval_dict.pop('cot_sums_acc')
+            for key, value in batch_eval_dict.items(): #remaining are ACC_BREAKDOWN batch_to_type determined subset mask accuracies
+                if not value is None: ACC_AGGREGATE[key].append(value)
+        total_steps += 1
+
+    avg_log_loss = total_log_loss / total_steps
+    avg_accuracy = total_accuracy / total_steps
+    avg_final_loss = total_final_loss / total_steps
+    if batch_to_type:
+        avg_cot_pos_acc = total_cot_pos_acc / total_steps
+        avg_positional_3sum_acc = positional_3sum_acc / total_steps
+        avg_cot_sums_acc = cot_sums_acc / total_steps
+
+    ACC_BREAKDOWN = {}
+    if batch_to_type:
+        for key, value in ACC_AGGREGATE.items():
+            ACC_BREAKDOWN[f'{key}_acc'] = np.mean(value) if not value is [] else None
+
+    if batch_to_type:
+        return {'log_loss': avg_log_loss, 'accuracy': avg_accuracy, 'final_loss':avg_final_loss, 'cot_pos_acc': avg_cot_pos_acc, 'positional_3sum_acc':avg_positional_3sum_acc, 'cot_sums_acc':avg_cot_sums_acc, **ACC_BREAKDOWN}
+    else:
+        return {'log_loss': avg_log_loss, 'accuracy': avg_accuracy, 'final_loss':avg_final_loss, **ACC_BREAKDOWN}
+
+
+def find_consecutive_dots_mask(labels, word_index_map):
+    # Create a mask of where dots are in the labels
+    dot_mask = labels == word_index_map['.']
+
+    # Shift the mask to the left, so we can compare each element with its successor
+    shifted_dot_mask = torch.roll(dot_mask, shifts=-1, dims=1)
+
+    # We need to ensure that we don't consider the shifted in value at the end of the tensor
+    # For simplicity, we can just set the last column to False since it cannot be the start of a consecutive sequence
+    shifted_dot_mask[:, -1] = False
+
+    # Find places where both a dot and its next element are dots
+    consecutive_dots_mask = dot_mask & shifted_dot_mask
+
+    # Now, we want to check if there's at least one instance of consecutive dots in each sequence
+    # Summing along the sequence length (dim=1) gives us the number of consecutive dot pairs
+    # We check if this sum is greater than 0, indicating at least one pair of consecutive dots exists
+    has_consecutive_dots = consecutive_dots_mask.sum(dim=1) > 0
+
+    return has_consecutive_dots
+
+def dot_tf_batch_to_type(labels, word_index_map, cot_t_bnd):
+    '''
+    Assume:
+    Multiple T/Fs -> CoT
+    '.' -> filler
+    else -> direct
+
+    Generically used as a lambda labels: dot_tf_batch_to_type(labels, test_set.word_index_map)
+
+    labels: tensor of shape (batch_size, max_len)
+    match3dataset: Match3VectorDataset word_index_map
+    '''
+    dot_mask = find_consecutive_dots_mask(labels, word_index_map)
+    cot_mask = ~dot_mask
+
+    return {
+        'dot': dot_mask,
+        'cot': cot_mask
+    }
+
+
+def match3_vector_eval_step(model, batch, TF_inds, loss, tf=True, batch_to_type=None, cot_tf_bounds=None):
+    '''
+    TF_inds: a 2-tuple of the indices of the True and False labels in the word index map
+    batch_to_type: a function that takes a tensor of labels and returns a tensor of the same dim with the type of each label, 
+                   0 for filler, 1 for direct, 2 for CoT 
+    '''
+    inputs, labels = batch['input_ids'].to("cuda"), batch['labels'].to("cuda")
+    with torch.no_grad():
+        with autocast(device_type='cuda', dtype=torch.float16):
+            outputs = model(inputs)['logits']
+            all_loss = loss(outputs, labels)
+
+            ACC_BREAKDOWN = {
+                'dot': 0,
+                'cot': 0
+            }
+            if tf:
+                ###### Calculate the accuracy over all positional tokens in CoT
+                cot_pos_locs = labels>=cot_tf_bounds[0]
+                if cot_pos_locs.any():
+                    cot_pos_locs = cot_pos_locs & (labels<cot_tf_bounds[1])
+                    cot_pos_indices = cot_pos_locs.nonzero(as_tuple=True)
+                    cot_pos_labels = labels[cot_pos_locs]
+                    cot_pos_preds = torch.argmax(outputs[cot_pos_indices[0], cot_pos_indices[1],:], dim=-1)
+                    cot_pos_mat = (cot_pos_labels == cot_pos_preds).float()
+                    cot_pos_acc = torch.mean(cot_pos_mat).item()
+
+                    ###### Now calculate the accuracy over Match-2 True results only by flipping the majority parity of the sequence and only checking those positions
+                    seq_len = labels.shape[1]
+                    seq_dim_parity = 2*(torch.arange(seq_len) % 2)-1  # Create a tensor of 1s and -1s to represent even and odd positions
+                    seq_dim_parity = seq_dim_parity.to(labels.device)  # Ensure parity tensor is on the same device as labels
+                    # Step 2: Calculate the majority parity for each sequence and flip it
+                    parity_cot_pos_locs = cot_pos_locs * seq_dim_parity.unsqueeze(0)
+                    # Sum even (1) and odd (0) positions for each sequence to determine the majority
+                    parity_counts = parity_cot_pos_locs.sum(dim=1, keepdim=True)
+                    # Determine if even (count <0) or odd (count > 0) positions are the majority
+                    majority_parity = (parity_counts > 0).long()
+                    # Flip majority parity
+                    flipped_majority_parity = 1 - majority_parity
+                    assert (flipped_majority_parity == 0).all() | (flipped_majority_parity == 1).all(), "Flipped majority parity must be uniformly 0 or 1"
+                    # Use broadcasted multiplication to mask out positions not matching the flipped majority parity
+                    seq_dim_parity_expanded = seq_dim_parity.unsqueeze(0).expand_as(cot_pos_locs)  # Expand seq_dim_parity to match cot_pos_locs shape
+                    flipped_parity_selection = cot_pos_locs & (seq_dim_parity_expanded == flipped_majority_parity.expand_as(seq_dim_parity_expanded))
+                    # Step 3: Select labels and predictions based on flipped parity
+                    flipped_parity_indices = flipped_parity_selection.nonzero(as_tuple=True)
+                    flipped_parity_labels = labels[flipped_parity_selection]
+                    flipped_parity_preds = torch.argmax(outputs[flipped_parity_indices[0], flipped_parity_indices[1], :], dim=-1)
+                    flipped_parity_mat = (flipped_parity_labels == flipped_parity_preds).float()
+                    parity_acc = flipped_parity_mat.mean().item()
+
+                    ###### Calculate CoT digit summations acc
+                    cot_sums_locs = labels>=cot_tf_bounds[1]
+                    cot_sums_indices = cot_sums_locs.nonzero(as_tuple=True)
+                    cot_sums_labels = labels[cot_sums_locs]
+                    cot_sums_preds = torch.argmax(outputs[cot_sums_indices[0], cot_sums_indices[1],:], dim=-1)
+                    cot_sums_mat = (cot_sums_labels == cot_sums_preds).float()
+                    cot_sums_acc = torch.mean(cot_sums_mat).item()
+                else:
+                    cot_pos_acc = None
+                    parity_acc = None
+                    cot_sums_acc = None
+            else:
+                cot_pos_acc = None
+                parity_acc = None
+                cot_sums_acc = None
+
+            ###### Calculate the accuracy over final tokens pre-EOS
+            seq_locs = torch.where(labels==0, 1, 0)
+            seq_locs = seq_locs[:,1:]
+            seq_locs = torch.cat([seq_locs, torch.zeros_like(seq_locs[:,0:1])], dim=1).bool()
+            acc_mat = (labels == torch.argmax(outputs, dim=-1)).float()
+            final_acc_mat = acc_mat[seq_locs]
+
+            #check
+            final_labels = labels[seq_locs]
+            assert ((final_labels == TF_inds[0]) | (final_labels == TF_inds[1])).all(), "Final token must be either True or False"
+
+
+            if batch_to_type is not None:
+                masks_dict = batch_to_type(labels)
+                for type_str, mask in masks_dict.items():
+                    masked_vals = acc_mat[mask.squeeze()]
+                    if masked_vals.numel() > 0:
+                        acc = torch.mean(masked_vals).item()
+                    else:
+                        acc = None
+                    ACC_BREAKDOWN[f'{type_str}'] = acc
+
+            final_labels = torch.where(seq_locs==1, labels, torch.tensor(-100))
+            final_loss = loss(outputs, final_labels)
+            accuracy = torch.mean(final_acc_mat).item()            
+
+    return {'log_loss': all_loss.item(), 'accuracy': accuracy, 'final_loss': final_loss.item(), 'cot_pos_acc':cot_pos_acc, 'positional_3sum_acc':parity_acc, 'cot_sums_acc':cot_sums_acc, **ACC_BREAKDOWN}
+
