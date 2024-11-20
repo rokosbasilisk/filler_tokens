@@ -42,8 +42,8 @@ Our contributions are as follows:
 
 \begin{itemize}
     \item We provide a detailed analysis of the layer-wise representations in a transformer model trained with filler CoT sequences, revealing how the hidden computations evolve across layers.
-    \item We demonstrate that the hidden computations can be recovered by examining lower-ranked tokens during decoding, without compromising the model's performance on the task.
-    \item We discuss the implications of our findings for model interpretability and suggest directions for future research in understanding and leveraging hidden computations in language models.
+    \item We demonstrate that the hidden computations can be recovered by examining higher-ranked tokens during decoding, without compromising the model's performance on the task.
+    \item We discuss the implications of our findings for model interpretability and suggest directions for future research in understanding hidden computations in language models.
 \end{itemize}
 
 \newpage
@@ -80,7 +80,13 @@ By applying the softmax function, we obtain a probability distribution over the 
 
 Understanding the internal mechanisms of Chain-of-Thought (CoT) reasoning has been a significant focus of recent research. \cite{pfau2023let} demonstrated that models can perform reasoning tasks even when explicit CoT is replaced with filler tokens, suggesting the presence of hidden computations. This finding challenges the assumption that visible CoT directly reflects the model's reasoning process and indicates that models may retain and utilize internal reasoning pathways that are not immediately observable in the output.
 
-Assessing the faithfulness and robustness of model reasoning is crucial for ensuring the trustworthiness of language models. \cite{gao2023shapley} employed Shapley value analysis to identify the importance of specific CoT tokens for final answers, highlighting that not all parts of the CoT contribute equally to the model's decision-making process. Similarly, \cite{madaan2022text} explored counterfactual prompting to evaluate the robustness of CoT reasoning, finding that certain aspects of the prompt have a more significant influence on the final answer than others. These studies underscore the need for a deeper understanding of how CoT contributes to model performance and the reliability of its reasoning capabilities.
+Further studies have explored the faithfulness and reliability of CoT reasoning. Lanham et al. \cite{lanham2023measuringfaithfulnesschainofthoughtreasoning} investigated the faithfulness of CoT explanations, revealing that as models become larger and more capable, the faithfulness of their reasoning often decreases across various tasks. Their work highlights that CoT's performance improvements do not solely stem from added computational steps or specific phrasing, but also raise concerns about the genuine alignment between stated reasoning and actual cognitive processes.
+
+Turpin et al. \cite{turpin2023languagemodelsdontsay} found that CoT explanations can systematically misrepresent the true reasons behind a model's predictions. They demonstrated that models might generate plausible yet misleading explanations, especially when influenced by biased inputs, leading to significant drops in accuracy and reinforcing stereotypes without acknowledging underlying biases.
+
+Addressing these challenges, Radhakrishnan et al. \cite{radhakrishnan2023questiondecompositionimprovesfaithfulness} proposed decomposing questions into simpler sub-questions to enhance the faithfulness of model-generated reasoning. Their decomposition-based methods not only improve the reliability of CoT explanations but also maintain performance gains, suggesting a viable pathway to more transparent and verifiable reasoning processes in large language models.
+
+Collectively, these studies underscore the complexity of CoT reasoning and the necessity for ongoing efforts to ensure that model-generated explanations are both faithful and transparent.
 
 \section{Methodology}
 
@@ -90,11 +96,66 @@ In this section, we describe the experimental setup, including the model archite
 
 We employed a transformer language model based on the LLaMA architecture \cite{touvron2023llama}, with 4 layers, a hidden dimension of 384, and 6 attention heads, totaling 34 million parameters. The model was randomly initialized and trained from scratch.
 
-\textbf{Dataset Generation:} We generated a synthetic dataset for the 3SUM task, consisting of sequences of integers and corresponding labels indicating whether any triplet sums to zero. Each input sequence $S = \{s_1, s_2, \dots, s_n\}$ contained integers sampled uniformly from the range $[-50, 50]$, ensuring a balanced distribution of positive and negative examples. The dataset contained 1,000,000 samples for training and 10,000 samples for testing.
+\section{Dataset Generation}
+
+We generated a synthetic dataset for the \textbf{Match-3} task, an extension of the classic 3SUM problem. Each input instance comprises a sequence of integer tuples, where each integer within a tuple is sampled uniformly from the range $[0, 9]$. Specifically, each input sequence \( S = \{s_1, s_2, \dots, s_7\} \) consists of 7 tuples, each of dimension 3. The corresponding labels indicate whether any triplet of tuples within the sequence sums to zero modulo 10, thereby ensuring a balanced distribution of positive and negative examples.
+
+To create this dataset, we utilized the \texttt{Match3} class, which facilitates the generation of both true and corrupted instances:
+
+\begin{itemize}
+    \item \textbf{True Instances:} These are sequences where at least one triplet of tuples satisfies the 3SUM condition modulo 10. The generation process ensures uniform sampling of tuples and incorporates symmetry to maintain balanced labels.
+    
+    \item \textbf{Corrupted Instances:} These sequences include intentional perturbations based on a specified corruption rate (set to \( \frac{4}{3} \) in our experiments). Corruptions involve altering tuple values to disrupt existing valid triplets or to introduce new ones, depending on the corruption parameters. This approach helps in creating challenging examples that test the model's robustness.
+\end{itemize}
+
+Additionally, the dataset includes \textbf{Chain-of-Thought (CoT)} annotations to enhance model interpretability. We implemented various CoT strategies, such as \texttt{rand\_cot} and \texttt{serial\_cot}, which provide intermediate reasoning steps alongside the final labels. These annotations are configurable, allowing for different levels of detail and types of explanations within the dataset.
+
+\subsection{Instance-Adaptive Chain of Thought}
+
+Instance-adaptive Chain-of-Thought (CoT) differs from parallelizable CoT in that it requires caching sub-problem solutions within token outputs. Specifically, in instance-adaptive computation, the operations performed in later CoT tokens depend on the results obtained from earlier CoT tokens. This dependency structure is incompatible with the parallel processing nature of filler token computation.
+
+In the context of the 3SUM problem, our instance-adaptive CoT approach decomposes the problem into dimension-wise 3SUMs. For each triplet of tuples, a dimension-wise summation is computed only if the previous dimension's summation equals zero. This creates an instance-adaptive dependency where the computation of one dimension influences the subsequent computations. For example, if the sum of the first dimension is zero, the model proceeds to compute the sum of the second dimension; otherwise, it skips to the next triplet. This sequential dependency ensures that the CoT reflects the logical progression of solving the problem step-by-step.
+
+\subsection{Data Generation Procedure}
+
+The data generation process for both parallelizable and instance-adaptive CoT follows identical input sampling procedures. The Chain-of-Thought generation is implemented as follows:
+
+Given an input sequence, for example, ``A15 B75 C22 D13'', the corresponding CoT is generated as ``: A B C 15 75 22 2 B C D 75 22 13 0 ANS True''. The generation process for each triplet, such as ``A B C'' and ``B C D'', involves the following steps:
+
+\begin{enumerate}
+    \item \textbf{Triple Listing:} For each triplet, if the sum of the first dimension is zero, list the individual triple (e.g., ``: A B C'').
+    \item \textbf{Value Listing:} List the values of the triples by copying from the input sequence (e.g., ``15 75 22'').
+    \item \textbf{Summation Result:} Compute and list the result of summing the given triple in each dimension modulo 10 (e.g., ``2'' since \( (15 + 75 + 22) \mod 10 = 2 \) for the second dimension).
+\end{enumerate}
+
+In our example, the triplet ``A B C'' sums to 0 in the first dimension but sums to 2 in the second dimension. Conversely, the triplet ``B C D'' sums to 0 in both dimensions, thereby satisfying the 3SUM condition for this input. The CoT annotations provide intermediate reasoning steps that trace the computation of these sums, facilitating better interpretability and debugging of the model's decision-making process.
+
+The generation process also includes options for adding fillers and controlling the inclusion of CoT annotations, ensuring a diverse and comprehensive dataset. Specifically, the dataset includes mixtures of filler-token sequences and instance-adaptive sequences.
+
+\newpage
+The dataset generation parameters were set as follows:
+
+\begin{itemize}
+    \item \textbf{Training Samples:} 10,000,000 instances
+    \item \textbf{Testing Samples:} 2,000 instances
+    \item \textbf{Tuple Dimension:} 3
+    \item \textbf{Modulus (\( \text{mod} \)):} 10
+    \item \textbf{Sequence Length:} 7
+    \item \textbf{True Instance Rate:} 50\%
+    \item \textbf{CoT Rate:} 50\%
+    \item \textbf{No Filler Rate:} 0\%
+    \item \textbf{Corruption Rate:} \( \frac{4}{3} \)
+\end{itemize}
+
+Inputs are uniformly sampled within the specified range, and the generation process incorporates both true and corrupted instances to balance the dataset. Corrupted instances are generated by introducing perturbations based on the corruption rate, which alters tuple values to either disrupt existing valid triplets or create new ones. This strategy enhances the dataset's diversity and challenges the model to generalize effectively.
+
+Chain-of-Thought annotations are generated using two primary strategies: \texttt{rand\_cot} and \texttt{serial\_cot}. The \texttt{rand\_cot} strategy randomly includes positions of the 2SUM summands in the CoT, whereas the \texttt{serial\_cot} strategy enforces a sequential dependency, ensuring that each step in the CoT builds upon the previous one. These strategies are configurable, allowing for various levels of detail and types of explanations within the dataset.
+
+The final dataset is split into training and testing subsets, each saved in CSV format for ease of use in downstream tasks such as model training and evaluation. Additionally, a JSON file documenting the hyperparameters used during generation is included to ensure reproducibility and facilitate further experimentation.
 
 \textbf{Target Sequences:} For each input sequence, the target output was a sequence of filler tokens (e.g., ``\ldots'') of a fixed length, followed by the final answer (``True'' or ``False''). The number of filler tokens corresponded to the expected length of a chain of thought, ensuring that the model processes a sequence similar in length to one with explicit reasoning steps.
 
-\textbf{Training Procedure:} The model was trained to predict the target sequences using the cross-entropy loss function. We optimized the model using the Adam optimizer with a learning rate of $1 \times 10^{-4}$, a batch size of 64, and weight decay of $0.01$. The training was conducted over 10 epochs, and early stopping was employed based on the validation loss to prevent overfitting.
+\textbf{Training Procedure:} The model was trained to predict the target sequences using the cross-entropy loss function. We optimized the model using the Adam optimizer with a learning rate of $1 \times 10^{-4}$ and a batch size of 256. The training was conducted over 5 epochs.
 
 \subsection{Layer-wise Representation Analysis}
 
@@ -137,9 +198,9 @@ Our layer-wise analysis revealed a gradual evolution of representations across t
 
 Starting from layer 3, we observed the emergence of filler tokens among the top-ranked predictions. The filler token (``\ldots'') began to appear more frequently as the top prediction, indicating that the model was starting to shift its focus toward producing the expected output format with filler tokens.
 
-By layer 4 (the final layer), the filler token dominated the top predictions, and the original numerical tokens were relegated to lower ranks. This pattern suggests that the model performs the necessary computations in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output.
+By layer 4 (the final layer), the filler token dominated the top predictions, and the original numerical tokens were relegated to lower ranks (rank-2). This pattern suggests that the model performs the necessary computations in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output.
 
-Figure \ref{fig:hidden_token_percentages} illustrates the percentage of filler tokens among the top predictions at each layer. The transition from numerical tokens to filler tokens across layers highlights how the model balances internal computation with output formatting.
+Figure~\ref{fig:hidden_token_percentages} illustrates the percentage of filler tokens among the top predictions at each layer. The transition from numerical tokens to filler tokens across layers highlights how the model balances internal computation with output formatting.
 
 \begin{figure}[H]
 \centering
@@ -154,23 +215,6 @@ In the token ranking analysis, we found that while the filler token was consiste
 
 This finding supports the hypothesis that the model retains the hidden computations beneath the filler tokens. The presence of the original reasoning tokens among the lower-ranked predictions indicates that the model internally processes the reasoning steps but prioritizes the filler tokens in the output to match the training targets.
 
-Table \ref{tab:token_ranks} provides examples of token rankings and their probabilities at a specific decoding step.
-
-\begin{table}[H]
-\centering
-\caption{Example of token rankings at a decoding step}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Token} & \textbf{Rank} & \textbf{Probability} \\
-\midrule
-``\ldots'' (Filler Token) & 1 & 0.65 \\
-``23'' (Numerical Token) & 2 & 0.20 \\
-``17'' (Numerical Token) & 3 & 0.10 \\
-\bottomrule
-\end{tabular}
-\label{tab:token_ranks}
-\end{table}
-
 \subsection{Modified Decoding Algorithm}
 
 By applying the modified decoding algorithm described in Section~\ref{ssec:Filler tokens}, we were able to recover the hidden computations without compromising the model's performance on the 3SUM task. The model's final answers remained correct, and the reconstructed reasoning steps provided a transparent view of the model's internal computations.
@@ -182,7 +226,7 @@ We compared our modified decoding method with two baselines:
     \item \textbf{Random Token Replacement:} Replaces filler tokens with randomly selected tokens from the vocabulary.
 \end{itemize}
 
-As shown in Figure \ref{fig:token_comparison}, our method significantly outperformed the random replacement and provided meaningful reasoning steps aligned with the model's internal computations.
+As shown in Figure~\ref{fig:token_comparison}, our method significantly outperformed the random replacement and provided meaningful reasoning steps aligned with the model's internal computations.
 
 \begin{figure}[H]
 \centering
@@ -193,27 +237,26 @@ As shown in Figure \ref{fig:token_comparison}, our method significantly outperfo
 
 \subsection{Discussion}
 
-Our findings indicate that the model internally performs the necessary computations for the 3SUM task and that these computations can be recovered by examining lower-ranked tokens during decoding. The model appears to perform the reasoning in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output format.
+Our findings indicate that the model internally performs the necessary computations for the 3SUM task and that these computations can be recovered by examining lower-ranked tokens during decoding. The model appears to perform the reasoning in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output.
 
 This overwriting behavior may involve mechanisms such as induction heads \cite{elhage2021mathematical}, where the model learns to copy or overwrite tokens based on patterns in the data. Understanding how the model manages the trade-off between performing computations and producing the expected output could provide valuable insights into the internal workings of transformer models.
 
-Our analysis contributes to the broader understanding of model interpretability and highlights the importance of examining internal representations to gain insights into how models process and represent information. By uncovering the hidden computations, we can develop methods to better control and interpret the outputs of language models, which is crucial for applications where explainability and trust are critical.
+Our analysis contributes to the broader understanding of model interpretability and highlights the importance of examining internal representations to gain insights into how models process and represent information. By uncovering the hidden computations, we can develop methods to better control and interpret the outputs of language models.
 
 \textbf{Limitations:} One limitation of our study is that it focuses on a synthetic task (3SUM) and a relatively small transformer model. While this allows for controlled experimentation, it may not fully capture the complexities of real-world language tasks and larger models. Future work should explore whether similar phenomena occur in larger models and more complex tasks.
 
+\newpage
 \section{Conclusion}
 
 We have presented an analysis of hidden computations in transformer models trained with filler CoT sequences on the 3SUM task. By utilizing the logit lens method and examining token rankings, we demonstrated that the hidden computations can be recovered without loss of performance. Our findings shed light on how models internally process and represent reasoning steps when the explicit chain of thought is obscured.
 
-This work contributes to the broader understanding of model interpretability and opens avenues for improving transparency in language model reasoning. By uncovering the hidden computations, we can gain insights into the internal mechanisms of transformer models and develop methods to better control and interpret their outputs.
+This work contributes to the broader understanding of model interpretability and opens avenues for improving transparency in language model reasoning. By uncovering the hidden computations, we can gain insights into the internal mechanisms of chain of thought reasining in language models.
 
 \section{Future Work}
 
 Future research should focus on exploring the mechanisms responsible for overwriting the hidden computations with filler tokens. Investigating whether specific circuits, such as induction heads or particular attention patterns, are involved could enhance our understanding of how models balance computation and output formatting.
 
-Moreover, applying similar analysis techniques to other tasks and models could assess the generality of our findings. Extending the investigation to natural language tasks and larger models would help determine whether the observed phenomena persist in more complex settings.
-
-Further work could also explore methods to prevent the overwriting of reasoning steps, allowing models to produce explicit chains of thought even when trained with filler tokens. Developing techniques to enhance the transparency and interpretability of models without compromising performance is an important direction for future research.
+Moreover, applying similar analysis techniques to other tasks (more general tasks other than 3SUM) and models could assess the generality of our findings. Extending the investigation to natural language tasks and larger models would help determine whether the observed phenomena persist in more complex settings.
 
 \newpage
 \appendix
@@ -239,7 +282,7 @@ In this appendix, we provide visualizations of the sequences generated using dif
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{our_method_decoding.png}
-    \caption{Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)}
+    \caption{Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens (Recovering Hidden Computations)}
     \label{fig:our-method}
 \end{figure}
 
@@ -253,7 +296,7 @@ In this appendix, we provide visualizations of the sequences generated using dif
 As shown in Figures \ref{fig:our-method} and \ref{fig:random}, our method successfully recovers the hidden computations, while random token replacement leads to incoherent sequences.
 
 \newpage
-\begin{thebibliography}{9}
+\begin{thebibliography}{12}
 
 \bibitem{wei2022chain}
 Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia,
@@ -282,22 +325,12 @@ Nelson Elhage, Neel Nanda, Catherine Olsson, Nicholas Schiefer, Skyler Hallinan,
 \newblock
   \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
 
-\bibitem{gao2023shapley}
-Xiaoyu Gao.
-\newblock Shapley values for interpretability in transformer models.
-\newblock {\em arXiv preprint arXiv:2302.00093}, 2023.
-
-\bibitem{madaan2022text}
-Divyansh Madaan and Marzieh Yazdanbakhsh.
-\newblock Text perturbations for evaluating chain-of-thought reasoning in
-  language models.
-\newblock {\em arXiv preprint arXiv:2212.08686}, 2022.
-
 \bibitem{turpin2023language}
 Jonathan Turpin, Uma Roy, Gabriel Poesia, Jared Kaplan, and Noah Goodman.
 \newblock Language models are problem solvers: Formulation of prompts and the
   faithfulness of model reasoning.
 \newblock {\em arXiv preprint arXiv:2305.14325}, 2023.
+\newblock \url{https://arxiv.org/abs/2305.14325}.
 
 \bibitem{touvron2023llama}
 Hugo Touvron, Thibaut Lavril, Gautier Izacard, Edouard Grave, Matthieu
@@ -305,6 +338,24 @@ Hugo Touvron, Thibaut Lavril, Gautier Izacard, Edouard Grave, Matthieu
   Sbarra, Aurelien Rodriguez, et~al.
 \newblock {LLaMA}: Open and efficient foundation language models.
 \newblock {\em arXiv preprint arXiv:2302.13971}, 2023.
+
+\bibitem{lanham2023measuringfaithfulnesschainofthoughtreasoning}
+Tamera Lanham, Anna Chen, Ansh Radhakrishnan, Benoit Steiner, Carson Denison, Danny Hernandez, Dustin Li, Esin Durmus, Evan Hubinger, Jackson Kernion, Kamilė Lukošiūtė, Karina Nguyen, Newton Cheng, Nicholas Joseph, Nicholas Schiefer, Oliver Rausch, Robin Larson, Sam McCandlish, Sandipan Kundu, Shannon Yang, Thomas Henighan, Timothy Maxwell, Timothy Telleen-Lawton, Tristan Hume, Zac Hatfield-Dodds, Jared Kaplan, Jan Brauner, Samuel R. Bowman, and Ethan Perez.
+\newblock Measuring Faithfulness in Chain-of-Thought Reasoning.
+\newblock {\em arXiv preprint arXiv:2307.13702}, 2023.
+\newblock \url{https://arxiv.org/abs/2307.13702}.
+
+\bibitem{radhakrishnan2023questiondecompositionimprovesfaithfulness}
+Ansh Radhakrishnan, Karina Nguyen, Anna Chen, Carol Chen, Carson Denison, Danny Hernandez, Esin Durmus, Evan Hubinger, Jackson Kernion, Kamilė Lukošiūtė, Newton Cheng, Nicholas Joseph, Nicholas Schiefer, Oliver Rausch, Sam McCandlish, Sheer El Showk, Tamera Lanham, Tim Maxwell, Venkatesa Chandrasekaran, Zac Hatfield-Dodds, Jared Kaplan, Jan Brauner, Samuel R. Bowman, and Ethan Perez.
+\newblock Question Decomposition Improves the Faithfulness of Model-Generated Reasoning.
+\newblock {\em arXiv preprint arXiv:2307.11768}, 2023.
+\newblock \url{https://arxiv.org/abs/2307.11768}.
+
+\bibitem{turpin2023languagemodelsdontsay}
+Miles Turpin, Julian Michael, Ethan Perez, and Samuel R. Bowman.
+\newblock Language Models Don't Always Say What They Think: Unfaithful Explanations in Chain-of-Thought Prompting.
+\newblock {\em arXiv preprint arXiv:2305.04388}, 2023.
+\newblock \url{https://arxiv.org/abs/2305.04388}.
 
 \end{thebibliography}
 
