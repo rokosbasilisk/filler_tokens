@@ -10,10 +10,11 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{url}
-\usepackage[numbers]{natbib}
 \usepackage{color}
 \usepackage{geometry}
 \geometry{margin=1in}
+
+\usepackage[numbers]{natbib}
 
 \title{Understanding Hidden Computations in Chain-of-Thought Reasoning}
 
@@ -33,9 +34,9 @@ Chain-of-Thought (CoT) prompting has significantly enhanced the reasoning abilit
 
 \section{Introduction}
 
-Chain-of-Thought (CoT) prompting has emerged as a powerful technique for improving the performance of large language models (LLMs) on complex reasoning tasks \cite{wei2022chain}. By encouraging models to generate intermediate reasoning steps, CoT prompting enables models to tackle problems that require multi-step reasoning. However, recent work by \citet{pfau2023let} demonstrates that these improvements can be achieved even when the CoT is replaced with hidden or filler characters (e.g., ``\ldots''). This raises intriguing questions about the nature of the computations being performed within these models and how they internally represent reasoning steps when the explicit chain of thought is obscured.
+Chain-of-Thought (CoT) prompting has emerged as a powerful technique for improving the performance of large language models (LLMs) on complex reasoning tasks \cite{wei2022chain}. By encouraging models to generate intermediate reasoning steps, CoT prompting enables models to tackle problems that require multi-step reasoning. However, recent work by \cite{pfau2023let} demonstrates that these improvements can be achieved even when the CoT is replaced with hidden or filler characters (e.g., ``\ldots''). This raises intriguing questions about the nature of the computations being performed within these models and how they internally represent reasoning steps when the explicit chain of thought is obscured.
 
-In this paper, we build upon the findings of \citet{pfau2023let} and investigate methods to decode these hidden computations in transformer models trained with filler CoT sequences. Focusing on the 3SUM task as a case study, we analyze the internal representations of the model using the logit lens method \cite{nostalgebraist2020} and examine token rankings during the decoding process. Our goal is to understand how the model processes and retains information when the explicit reasoning steps are replaced with filler tokens, and whether the hidden computations can be recovered without loss of performance.
+In this paper, we build upon the findings of \cite{pfau2023let} and investigate methods to decode these hidden computations in transformer models trained with filler CoT sequences. Focusing on the 3SUM task as a case study, we analyze the internal representations of the model using the logit lens method \cite{nostalgebraist2020} and examine token rankings during the decoding process. Our goal is to understand how the model processes and retains information when the explicit reasoning steps are replaced with filler tokens, and whether the hidden computations can be recovered without loss of performance.
 
 Our contributions are as follows:
 
@@ -45,7 +46,7 @@ Our contributions are as follows:
     \item We discuss the implications of our findings for model interpretability and suggest directions for future research in understanding and leveraging hidden computations in language models.
 \end{itemize}
 
-\clearpage
+\newpage
 \section{Background}
 
 In this section, we provide an overview of the key concepts and previous work relevant to our study, including Chain-of-Thought prompting, hidden chain-of-thought with filler tokens, the 3SUM task, and the logit lens method.
@@ -58,7 +59,7 @@ Formally, given a question $Q$, the model is prompted to generate a sequence of 
 
 \subsection{Hidden Chain-of-Thought with Filler Tokens}
 
-In a variant of CoT prompting, the intermediate reasoning steps are replaced with filler characters (e.g., ``\ldots''), resulting in a hidden chain of thought. That is, instead of outputting $S = R \circ A$, the model outputs $S = F \circ A$, where $F$ is a sequence of filler tokens. \citet{pfau2023let} found that models trained with such filler CoT sequences can still perform well on reasoning tasks, suggesting that meaningful computation occurs internally despite the absence of explicit reasoning steps in the output.
+In a variant of CoT prompting, the intermediate reasoning steps are replaced with filler characters (e.g., ``\ldots''), resulting in a hidden chain of thought. That is, instead of outputting $S = R \circ A$, the model outputs $S = F \circ A$, where $F$ is a sequence of filler tokens. \cite{pfau2023let} found that models trained with such filler CoT sequences can still perform well on reasoning tasks, suggesting that meaningful computation occurs internally despite the absence of explicit reasoning steps in the output.
 
 This phenomenon raises questions about how models internally process and represent reasoning steps when the chain of thought is obscured. Understanding this internal processing is important for model interpretability and could have implications for model safety and controllability.
 
@@ -70,22 +71,22 @@ The 3SUM problem is a well-known computational problem and serves as a proxy for
 
 \subsection{Logit Lens Method}
 
-The logit lens method, introduced by \citet{nostalgebraist2020}, provides a way to inspect the internal representations of a language model by mapping the activations at each layer back to the vocabulary space. Specifically, at each layer $l$, the hidden state $\mathbf{h}^l$ is projected onto the vocabulary logits using the output embedding matrix $\mathbf{W}_{\text{out}}$, yielding $\mathbf{z}^l = \mathbf{h}^l \mathbf{W}_{\text{out}}$. By applying the softmax function, we obtain a probability distribution over the vocabulary at each layer.
+The logit lens method, introduced by \cite{nostalgebraist2020}, provides a way to inspect the internal representations of a language model by mapping the activations at each layer back to the vocabulary space. Specifically, at each layer $l$, the hidden state $\mathbf{h}^l$ is projected onto the vocabulary logits using the output embedding matrix $\mathbf{W}_{\text{out}}$, yielding $\mathbf{z}^l = \mathbf{h}^l \mathbf{W}_{\text{out}}$.
 
-This method allows us to observe the model's intermediate predictions and gain insights into how information is processed and transformed across layers. By examining the top predicted tokens at each layer, we can infer the model's evolving ``thoughts'' as it processes the input and generates the output.
+By applying the softmax function, we obtain a probability distribution over the vocabulary at each layer. This method allows us to observe the model's intermediate predictions and gain insights into how information is processed and transformed across layers. By examining the top predicted tokens at each layer, we can infer the model's evolving ``thoughts'' as it processes the input and generates the output.
 
-\clearpage
+\newpage
 \section{Related Work}
 
 \paragraph{Analysis of Chain-of-Thought Faithfulness}
 Recent work has analyzed CoT faithfulness in different ways than our work. 
-\citet{gao2023shapley} use Shapley analysis to show that certain tokens of the CoT are much more important than others for the final answer. 
+\cite{gao2023shapley} use Shapley analysis to show that certain tokens of the CoT are much more important than others for the final answer. 
 Our work proposes different tests of CoT faithfulness with lower computational costs.
-\citet{madaan2022text} investigate CoT via counterfactual prompting and find that some aspects of the prompt are less important than others for the final answer reached.
+\cite{madaan2022text} investigate CoT via counterfactual prompting and find that some aspects of the prompt are less important than others for the final answer reached.
 We intervene on the CoT produced by the model rather than few-shot prompt examples and propose general tests for CoT faithfulness.
-\citet{turpin2023language} discover examples of unfaithful CoT in adversarially constructed settings, showing that CoT reasoning is not always faithful. In that paper, the model produces CoT in the presence of biasing few-shot examples; while the model's final answer is consistent with the bias provided by the prompt, the CoT gives a different explanation for the answer that does not reference the biasing context. 
+\cite{turpin2023language} discover examples of unfaithful CoT in adversarially constructed settings, showing that CoT reasoning is not always faithful. In that paper, the model produces CoT in the presence of biasing few-shot examples; while the model's final answer is consistent with the bias provided by the prompt, the CoT gives a different explanation for the answer that does not reference the biasing context. 
 In contrast, this work investigates non-adversarial settings to collect evidence about reasoning faithfulness under a wider variety of realistic conditions.
-\citet{wei2022chain} test three hypotheses for why CoT prompting provides a performance boost: that it produces an equation to be evaluated, that it provides additional test-time compute, and that the CoT better enables the model to access relevant information from pretraining. We expand upon the test-time compute only experiment presented in that work with the filler tokens experiment presented in Section~\ref{ssec:Filler tokens}, by evaluating a wider range of tasks and varying the number of filler tokens.
+\cite{wei2022chain} test three hypotheses for why CoT prompting provides a performance boost: that it produces an equation to be evaluated, that it provides additional test-time compute, and that the CoT better enables the model to access relevant information from pretraining. We expand upon the test-time compute only experiment presented in that work with the filler tokens experiment presented in Section~\ref{ssec:Filler tokens}, by evaluating a wider range of tasks and varying the number of filler tokens.
 
 \section{Methodology}
 
@@ -220,8 +221,8 @@ Moreover, applying similar analysis techniques to other tasks and models could a
 
 Further work could also explore methods to prevent the overwriting of reasoning steps, allowing models to produce explicit chains of thought even when trained with filler tokens. Developing techniques to enhance the transparency and interpretability of models without compromising performance is an important direction for future research.
 
-\clearpage
-\section*{Appendix}
+\newpage
+\appendix
 
 \section{Layer-wise View of Sequences Generated via Various Decoding Methods}
 
@@ -257,10 +258,8 @@ In this appendix, we provide visualizations of the sequences generated using dif
 
 As shown in Figures \ref{fig:our-method} and \ref{fig:random}, our method successfully recovers the hidden computations, while random token replacement leads to incoherent sequences.
 
-\clearpage
-
-\bibliographystyle{plainnat}
-\begin{thebibliography}{10}
+\newpage
+\begin{thebibliography}{9}
 
 \bibitem{wei2022chain}
 Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia,
@@ -282,17 +281,16 @@ Nostalgebraist.
   \url{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens},
   2020.
 
-\bibitem{elhage2021mathematical}
-Nelson Elhage, Neel Nanda, Catherine Olsson, Nicholas Schiefer, Skyler Hallinan,
-  Stanislav Fort, Danny Hernandez, and Chris Olah.
-\newblock A mathematical framework for transformer circuits.
-\newblock
-  \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
+\bibitem{gao2023shapley}
+Xiaoyu Gao.
+\newblock Shapley values for interpretability in transformer models.
+\newblock {\em arXiv preprint arXiv:2302.00093}, 2023.
 
-\bibitem{lanham2023measuring}
-Tamera Lanham, Jan Brauner, Samuel~R. Bowman, and Ethan Perez.
-\newblock Measuring faithfulness in chain-of-thought reasoning.
-\newblock {\em arXiv preprint arXiv:2305.17447}, 2023.
+\bibitem{madaan2022text}
+Divyansh Madaan and Marzieh Yazdanbakhsh.
+\newblock Text perturbations for evaluating chain-of-thought reasoning in
+  language models.
+\newblock {\em arXiv preprint arXiv:2212.08686}, 2022.
 
 \bibitem{turpin2023language}
 Jonathan Turpin, Uma Roy, Gabriel Poesia, Jared Kaplan, and Noah Goodman.
@@ -307,16 +305,12 @@ Hugo Touvron, Thibaut Lavril, Gautier Izacard, Edouard Grave, Matthieu
 \newblock {LLaMA}: Open and efficient foundation language models.
 \newblock {\em arXiv preprint arXiv:2302.13971}, 2023.
 
-\bibitem{gao2023shapley}
-Xiaoyu Gao.
-\newblock Shapley values for interpretability in transformer models.
-\newblock {\em arXiv preprint arXiv:2302.00093}, 2023.
-
-\bibitem{madaan2022text}
-Divyansh Madaan and Marzieh Yazdanbakhsh.
-\newblock Text perturbations for evaluating chain-of-thought reasoning in
-  language models.
-\newblock {\em arXiv preprint arXiv:2212.08686}, 2022.
+\bibitem{elhage2021mathematical}
+Nelson Elhage, Neel Nanda, Catherine Olsson, Nicholas Schiefer, Skyler Hallinan,
+  Stanislav Fort, Danny Hernandez, and Chris Olah.
+\newblock A mathematical framework for transformer circuits.
+\newblock
+  \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
 
 \end{thebibliography}
 
