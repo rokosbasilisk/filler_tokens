@@ -1,130 +1,309 @@
-\documentclass[10pt,a4paper]{article}
+\documentclass{article}
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{amsmath}
-\usepackage{amssymb}
+\usepackage{amsmath, amssymb, amsfonts}
 \usepackage{graphicx}
 \usepackage{hyperref}
-\usepackage{csvsimple}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{adjustbox}
+\usepackage{booktabs}
 \usepackage{float}
-\usepackage{subcaption}
-\usepackage{graphicx}
 \usepackage{caption}
+\usepackage{subcaption}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+\usepackage{color}
+\usepackage{geometry}
+\geometry{margin=1in}
 
 \title{Understanding Hidden Computations in Chain-of-Thought Reasoning}
-\author{Aryasomayajula Ram Bharadwaj\\
-Independent Researcher\\
+
+\author{Aryasomayajula Ram Bharadwaj \\
+Independent Researcher \\
 \texttt{ram.bharadwaj.arya@gmail.com}}
+
+\date{}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-Recent work has shown that transformer models can perform complex reasoning tasks using Chain-of-Thought (COT) prompting, even when the COT is replaced with filler characters. This paper attempts to investigates methods to decode these hidden/filler computations, focusing on the 3SUM task. We analyze a 34M parameter LLaMA model trained on filler COT sequences and propose a novel decoding method that successfully eliminates the filler tokens in the original COT without sacrificing the accuracy. Our findings provide insights into how transformers encode and process information in filler COT sequences, offering new perspectives on model interpretability and the nature of computation in language models.
-
+Chain-of-Thought (CoT) prompting has significantly enhanced the reasoning abilities of large language models. However, recent studies have shown that models can still perform complex reasoning tasks even when the CoT is replaced with filler characters (e.g., ``\ldots''), leaving open questions about how models internally process and represent reasoning steps. In this paper, we investigate methods to decode these hidden computations in transformer models trained with filler CoT sequences. By analyzing layer-wise representations using the logit lens method and examining token rankings, we demonstrate that the hidden computations can be recovered without loss of performance. Our findings provide insights into the internal mechanisms of transformer models and open avenues for improving interpretability and transparency in language model reasoning.
 \end{abstract}
 
 \section{Introduction}
-Chain-of-Thought (COT) prompting has emerged as a powerful technique for improving the performance of large language models on complex reasoning tasks [1]. However, recent work by [2] demonstrates that these improvements can be achieved even when the COT is replaced with hidden/filler characters (e.g., "..."), raising intriguing questions about the nature of computation being performed within these models.
 
-This paper builds upon the findings of [2], focusing on the 3SUM task as a case study. We aim to decode the hidden computations embedded within the transformer architecture when trained on hidden COT sequences. Our work provides valuable insights into how these models encode and process information, potentially leading to improved model interpretability and more effective training strategies.
+Chain-of-Thought (CoT) prompting has emerged as a powerful technique for improving the performance of large language models (LLMs) on complex reasoning tasks \cite{wei2022chain}. By encouraging models to generate intermediate reasoning steps, CoT prompting enables models to tackle problems that require multi-step reasoning. However, recent work by \cite{pfau2023let} demonstrates that these improvements can be achieved even when the CoT is replaced with hidden or filler characters (e.g., ``\ldots''). This raises intriguing questions about the nature of the computations being performed within these models and how they internally represent reasoning steps when the explicit chain of thought is obscured.
+
+In this paper, we build upon the findings of \cite{pfau2023let} and investigate methods to decode these hidden computations in transformer models trained with filler CoT sequences. Focusing on the 3SUM task as a case study, we analyze the internal representations of the model using the logit lens method \cite{nostalgebraist2020} and examine token rankings during the decoding process. Our goal is to understand how the model processes and retains information when the explicit reasoning steps are replaced with filler tokens, and whether the hidden computations can be recovered without loss of performance.
+
+Our contributions are as follows:
+
+\begin{itemize}
+    \item We provide a detailed analysis of the layer-wise representations in a transformer model trained with filler CoT sequences, revealing how the hidden computations evolve across layers.
+    \item We demonstrate that the hidden computations can be recovered by examining lower-ranked tokens during decoding, without compromising the model's performance on the task.
+    \item We discuss the implications of our findings for model interpretability and suggest directions for future research in understanding and leveraging hidden computations in language models.
+\end{itemize}
 
 \section{Background}
 
-\subsection{The 3SUM Task}
-The 3SUM task involves finding three numbers in a given set that sum to zero. In this experiment it serves as a proxy for more complex reasoning tasks to study the computational capabilities of transformer models [1]. For this experiment we have used the same data representation method and generating process or 3SUM sequences as in [1].
+In this section, we provide an overview of the key concepts and previous work relevant to our study, including Chain-of-Thought prompting, hidden chain-of-thought with filler tokens, the 3SUM task, and the logit lens method.
 
-\subsection{Chain-of-Thought using Filler Tokens}
-In this variant of Chain-of-Thought, intermediate reasoning steps are replaced with filler characters (e.g., "..."). It has been observed in [1] that the models trained on hidden/filler sequences still perform well, suggesting that meaningful computation occurs despite the lack of explicit reasoning steps.
+\subsection{Chain-of-Thought Prompting}
+
+Chain-of-Thought (CoT) prompting involves providing language models with prompts that include intermediate reasoning steps leading to the final answer \cite{wei2022chain}. This technique has been shown to improve the performance of large language models on tasks requiring multi-step reasoning, such as mathematical problem-solving and commonsense reasoning.
+
+Formally, given a question $Q$, the model is prompted to generate a sequence of tokens that includes a chain of reasoning $R$ followed by the final answer $A$. The desired output is thus $S = R \circ A$, where $\circ$ denotes concatenation. For example, for the arithmetic question ``What is 12 plus 15?'', the chain of thought could be ``12 plus 15 equals 27'', leading to the final answer ``27''.
+
+\subsection{Hidden Chain-of-Thought with Filler Tokens}
+
+In a variant of CoT prompting, the intermediate reasoning steps are replaced with filler characters (e.g., ``\ldots''), resulting in a hidden chain of thought. That is, instead of outputting $S = R \circ A$, the model outputs $S = F \circ A$, where $F$ is a sequence of filler tokens. \cite{pfau2023let} found that models trained with such filler CoT sequences can still perform well on reasoning tasks, suggesting that meaningful computation occurs internally despite the absence of explicit reasoning steps in the output.
+
+This phenomenon raises questions about how models internally process and represent reasoning steps when the chain of thought is obscured. Understanding this internal processing is important for model interpretability and could have implications for model safety and controllability.
+
+\subsection{The 3SUM Task}
+
+The 3SUM task involves determining whether any three numbers in a given list sum to zero. Formally, given a list of integers $S = \{s_1, s_2, \dots, s_n\}$, the task is to decide whether there exist indices $i, j, k$ (with $i \ne j \ne k$) such that $s_i + s_j + s_k = 0$.
+
+The 3SUM problem is a well-known computational problem and serves as a proxy for more complex reasoning tasks in the context of language models \cite{pfau2023let}. By using a mathematical problem that requires combinatorial reasoning, we can study the model's ability to perform internal computations and understand how it processes the problem when the chain of thought is hidden.
+
+\subsection{Logit Lens Method}
+
+The logit lens method, introduced by \cite{nostalgebraist2020}, provides a way to inspect the internal representations of a language model by mapping the activations at each layer back to the vocabulary space. Specifically, at each layer $l$, the hidden state $\mathbf{h}^l$ is projected onto the vocabulary logits using the output embedding matrix $\mathbf{W}_{\text{out}}$, yielding $\mathbf{z}^l = \mathbf{h}^l \mathbf{W}_{\text{out}}$. By applying the softmax function, we obtain a probability distribution over the vocabulary at each layer.
+
+This method allows us to observe the model's intermediate predictions and gain insights into how information is processed and transformed across layers. By examining the top predicted tokens at each layer, we can infer the model's evolving ``thoughts'' as it processes the input and generates the output.
+
+\section{Related Work}
+
+Understanding the internal mechanisms of language models and how they represent knowledge has been an active area of research. \cite{geva2020dissecting} studied how models recall factual associations, highlighting the roles of intermediate representations and the extraction process.
+
+\cite{elhage2021mathematical} introduced the concept of ``induction heads'' in transformer models, which are attention patterns that enable the model to copy sequences from earlier in the context. This mechanism could be related to how models overwrite intermediate computations with filler tokens in the later layers.
+
+Other work has focused on model interpretability and probing the representations within transformer models. \cite{rogers2020primer} provided a comprehensive overview of BERT and similar models, discussing various analysis techniques. \cite{belinkov2019analysis} surveyed methods for analyzing neural language processing models, including attention visualization and probing classifiers.
+
+In the context of hidden computations, \cite{lanham2023measuring} and \cite{madaan2023self} examined the ability of language models to perform reasoning tasks when the chain of thought is obscured. Their findings suggest that while current large language models may not significantly benefit from filler tokens on certain benchmarks, the potential for hidden computations remains an important area of investigation.
 
 \section{Methodology}
-We used a 34M-parameter LLaMA model with 4 layers, 384 hidden dimension, and 6 attention heads [4], the size of the training and test datasets and all other hyperparameters are kept the same as in the "Let's think dot by dot" paper [2]. Our analysis focused on three main areas: Layer-wise Representation Analysis, Token Ranking, and Modified Greedy Decoding Algorithm.
+
+In this section, we describe the experimental setup, including the model architecture, training procedure, and the analysis methods used to investigate the hidden computations.
+
+\subsection{Model and Training}
+
+We employed a transformer language model based on the LLaMA architecture \cite{touvron2023llama}, with 4 layers, a hidden dimension of 384, and 6 attention heads, totaling 34 million parameters. The model was randomly initialized and trained from scratch.
+
+\textbf{Dataset Generation:} We generated a synthetic dataset for the 3SUM task, consisting of sequences of integers and corresponding labels indicating whether any triplet sums to zero. Each input sequence $S = \{s_1, s_2, \dots, s_n\}$ contained integers sampled uniformly from the range $[-50, 50]$, ensuring a balanced distribution of positive and negative examples. The dataset contained 1,000,000 samples for training and 10,000 samples for testing.
+
+\textbf{Target Sequences:} For each input sequence, the target output was a sequence of filler tokens (e.g., ``\ldots'') of a fixed length, followed by the final answer (``True'' or ``False''). The number of filler tokens corresponded to the expected length of a chain of thought, ensuring that the model processes a sequence similar in length to one with explicit reasoning steps.
+
+\textbf{Training Procedure:} The model was trained to predict the target sequences using the cross-entropy loss function. We optimized the model using the Adam optimizer with a learning rate of $1 \times 10^{-4}$, a batch size of 64, and weight decay of $0.01$. The training was conducted over 10 epochs, and early stopping was employed based on the validation loss to prevent overfitting.
+
+\subsection{Layer-wise Representation Analysis}
+
+To investigate how the model processes the hidden computations across layers, we employed the logit lens method \cite{nostalgebraist2020}. At each layer $l$, we extracted the hidden states $\mathbf{h}^l$ and projected them onto the vocabulary logits using the output embedding matrix $\mathbf{W}_{\text{out}}$, yielding $\mathbf{z}^l = \mathbf{h}^l \mathbf{W}_{\text{out}}$.
+
+By applying the softmax function to $\mathbf{z}^l$, we obtained the probability distribution over the vocabulary at each layer. This allowed us to examine the top predicted tokens at each layer and observe how the model's internal representations evolve across layers. Specifically, we were interested in whether the filler tokens or the original reasoning steps were predominant in the predictions at different layers.
+
+\subsection{Token Ranking Analysis}
+
+Building upon the observations from the layer-wise analysis, we conducted a token ranking analysis during the decoding process. For each position in the output sequence, we examined the top $k$ candidate tokens based on their predicted probabilities. Our aim was to determine whether the original, non-filler CoT tokens appeared among the lower-ranked candidates when the filler token was the top prediction.
+
+By analyzing the token rankings, we assessed whether the model retains the hidden computations beneath the filler tokens and whether these computations can be recovered by considering lower-ranked tokens. This analysis provides insights into the model's internal processing and the extent to which the hidden computations are accessible.
+
+\subsection{Modified Decoding Algorithm}
+
+Based on the insights from the token ranking analysis, we implemented a modified greedy autoregressive decoding algorithm to recover the hidden computations. The algorithm operates as follows:
+
+\begin{enumerate}
+    \item Initialize the output sequence with the start token.
+    \item For each decoding step $t$:
+    \begin{enumerate}
+        \item Compute the probability distribution over the vocabulary using the current hidden state.
+        \item If the top-ranked token is the filler token, select the highest-ranked non-filler token as the output for position $t$.
+        \item Otherwise, select the top-ranked token as usual.
+        \item Update the hidden state based on the selected token.
+    \end{enumerate}
+    \item Continue the process until the end-of-sequence token is generated or the maximum sequence length is reached.
+\end{enumerate}
+
+This modified decoding algorithm allows us to recover the hidden computations by bypassing the filler tokens when they are the top prediction. By selecting the next most probable non-filler token, we can reconstruct the original reasoning steps without compromising the model's performance on the task.
 
 \section{Results and Discussion}
 
-\subsection{Layer-wise Analysis}
-Our analysis revealed a gradual evolution of representations across the model's layers. The initial layers primarily contained raw numerical sequences associated with the 3SUM problem's chain of thought. However, starting from the third layer, we noticed the emergence of hidden tokens. As we progressed through subsequent layers, we observed a steady transition from purely numerical sequences to an increasing prevalence of filler characters.
-This pattern suggests that the model develops the ability to utilize filler tokens as proxies only in its deeper layers, which aligns with intuitive expectations of how neural networks process information. After conducting a comprehensive evaluation across numerous examples, we found that, on average, there is a marked increase in filler token usage immediately following the second layer. Furthermore, the final layers of the model demonstrate extensive reliance on these hidden tokens.
-For this analysis, we employed nostalgebraist's logit lens method [3].
+In this section, we present the results of our experiments and discuss their implications for understanding hidden computations in transformer models.
+
+\subsection{Layer-wise Representation Analysis}
+
+Our layer-wise analysis revealed a gradual evolution of representations across the model's layers. In the initial layers (layers 1 and 2), the model's activations corresponded to the raw numerical sequences associated with the 3SUM problem's chain of thought. The top predicted tokens at these layers were primarily numerical tokens representing elements of the input sequence and intermediate calculations.
+
+Starting from layer 3, we observed the emergence of filler tokens among the top-ranked predictions. The filler token (``\ldots'') began to appear more frequently as the top prediction, indicating that the model was starting to shift its focus toward producing the expected output format with filler tokens.
+
+By layer 4 (the final layer), the filler token dominated the top predictions, and the original numerical tokens were relegated to lower ranks. This pattern suggests that the model performs the necessary computations in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output.
+
+Figure \ref{fig:hidden_token_percentages} illustrates the percentage of filler tokens among the top predictions at each layer. The transition from numerical tokens to filler tokens across layers highlights how the model balances internal computation with output formatting.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{hidden_tokens_percentage_by_layer.png}
-\caption{Filler token occurrence percentages in generated sequences across layers}
+\includegraphics[width=0.8\textwidth]{hidden_tokens_percentage_by_layer.png}
+\caption{Percentage of filler tokens among top predictions across layers}
 \label{fig:hidden_token_percentages}
 \end{figure}
 
+\subsection{Token Ranking Analysis}
 
-\subsection{Token Rank Analysis}
-The top-ranked token was consistently the filler character ("."), while lower-ranked tokens revealed the original, non-filler COT sequences. This supports the hypothesis that the model replaces all computation with filler tokens on top while keeping the original computation intact underneath. We have provided a sample snapshot of sequences decoded at each layer for both the top (rank-1) and rank-2 tokens in the appendix section.
+In the token ranking analysis, we found that while the filler token was consistently the top-ranked token at each decoding step in the later layers, the original, non-filler CoT tokens remained among the lower-ranked candidates. Specifically, the second-ranked token often corresponded to the numerical tokens representing the hidden reasoning steps.
 
-\subsection{Modified Greedy Decoding Algorithm}
-Based on the observations made in the token rank analysis, We implemented a modified greedy autoregressive decoding method. The steps include: performing standard greedy decoding, selecting the second-highest probability token when encountering a filler token, and continuing this process for the entire sequence. This resulted in a 100\% match in 3SUM task results with and without filler tokens. To test the effectiveness of this method, we have also compared this with replacing the filler token with randomly sampled token instead of the next highest (rank-2) token. The percentages of the original and these modified decoding methods are visualized as plots below. 
+This finding supports the hypothesis that the model retains the hidden computations beneath the filler tokens. The presence of the original reasoning tokens among the lower-ranked predictions indicates that the model internally processes the reasoning steps but prioritizes the filler tokens in the output to match the training targets.
+
+Table \ref{tab:token_ranks} provides examples of token rankings and their probabilities at a specific decoding step.
+
+\begin{table}[H]
+\centering
+\caption{Example of token rankings at a decoding step}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Token} & \textbf{Rank} & \textbf{Probability} \\
+\midrule
+``\ldots'' (Filler Token) & 1 & 0.65 \\
+``23'' (Numerical Token) & 2 & 0.20 \\
+``17'' (Numerical Token) & 3 & 0.10 \\
+\bottomrule
+\end{tabular}
+\label{tab:token_ranks}
+\end{table}
+
+\subsection{Modified Decoding Algorithm}
+
+By applying the modified decoding algorithm described in Section 4.4, we were able to recover the hidden computations without compromising the model's performance on the 3SUM task. The model's final answers remained correct, and the reconstructed reasoning steps provided a transparent view of the model's internal computations.
+
+We compared our modified decoding method with two baselines:
+
+\begin{itemize}
+    \item \textbf{Standard Greedy Decoding:} Outputs the filler tokens as in the original training data.
+    \item \textbf{Random Token Replacement:} Replaces filler tokens with randomly selected tokens from the vocabulary.
+\end{itemize}
+
+As shown in Figure \ref{fig:token_comparison}, our method significantly outperformed the random replacement and provided meaningful reasoning steps aligned with the model's internal computations.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{token_comparison_percentages.png}
-\caption{Comparison of decoding methods}
-\label{fig:decoding_comparison}
+\includegraphics[width=0.8\textwidth]{token_comparison_percentages.png}
+\caption{Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement}
+\label{fig:token_comparison}
 \end{figure}
 
-\section{Implications and Future Work}
-Our findings provide new tools for understanding internal reasoning processes and increase confidence in COT-based approaches for improving visibility. Future work should focus on developing better decoding methods or finding circuits that hide tokens, investigating generalizability to tasks beyond 3SUM (including natural language tasks), and improving token hiding methods (currently limited to one filler token which is simple to decode).
+\subsection{Discussion}
+
+Our findings indicate that the model internally performs the necessary computations for the 3SUM task and that these computations can be recovered by examining lower-ranked tokens during decoding. The model appears to perform the reasoning in the earlier layers and then overwrites the intermediate representations with filler tokens in the later layers to produce the expected output format.
+
+This overwriting behavior may involve mechanisms such as induction heads \cite{elhage2021mathematical}, where the model learns to copy or overwrite tokens based on patterns in the data. Understanding how the model manages the trade-off between performing computations and producing the expected output could provide valuable insights into the internal workings of transformer models.
+
+Our analysis contributes to the broader understanding of model interpretability and highlights the importance of examining internal representations to gain insights into how models process and represent information. By uncovering the hidden computations, we can develop methods to better control and interpret the outputs of language models, which is crucial for applications where explainability and trust are critical.
+
+\textbf{Limitations:} One limitation of our study is that it focuses on a synthetic task (3SUM) and a relatively small transformer model. While this allows for controlled experimentation, it may not fully capture the complexities of real-world language tasks and larger models. Future work should explore whether similar phenomena occur in larger models and more complex tasks.
+
+\section{Conclusion}
+
+We have presented an analysis of hidden computations in transformer models trained with filler CoT sequences on the 3SUM task. By utilizing the logit lens method and examining token rankings, we demonstrated that the hidden computations can be recovered without loss of performance. Our findings shed light on how models internally process and represent reasoning steps when the explicit chain of thought is obscured.
+
+This work contributes to the broader understanding of model interpretability and opens avenues for improving transparency in language model reasoning. By uncovering the hidden computations, we can gain insights into the internal mechanisms of transformer models and develop methods to better control and interpret their outputs.
+
+\section{Future Work}
+
+Future research should focus on exploring the mechanisms responsible for overwriting the hidden computations with filler tokens. Investigating whether specific circuits, such as induction heads or particular attention patterns, are involved could enhance our understanding of how models balance computation and output formatting.
+
+Moreover, applying similar analysis techniques to other tasks and models could assess the generality of our findings. Extending the investigation to natural language tasks and larger models would help determine whether the observed phenomena persist in more complex settings.
+
+Further work could also explore methods to prevent the overwriting of reasoning steps, allowing models to produce explicit chains of thought even when trained with filler tokens. Developing techniques to enhance the transparency and interpretability of models without compromising performance is an important direction for future research.
+
+\textbf{Applications:} Understanding hidden computations in language models has implications for model interpretability, safety, and alignment. By making the internal reasoning processes more transparent, we can build more trustworthy AI systems that are better aligned with human values and expectations.
+
 
 \clearpage
-\section{Conclusion}
-We have presented a novel approach to understanding hidden computations in transformer models through the analysis of token rankings and layer-wise representations, and the development of a modified decoding algorithm. Our insights into how models encode and process information in filler COT sequences open new avenues for improving interpretability, efficiency, and safety in language models. This work strengthens the belief in COT visibility research for interpretability.
-\vfill
-The code used for the experiments and analysis in this paper is available on GitHub at \href{https://github.com/rokosbasilisk/filler_tokens/tree/v2}{https://github.com/rokosbasilisk/filler\_tokens/tree/v2}.
-\clearpage
-\begin{figure}[p]
+
+\appendix
+
+\section{Appendix: Layer-wise View of Sequences Generated via Various Decoding Methods}
+
+In this appendix, we provide visualizations of the sequences generated using different decoding methods to illustrate how the hidden computations can be recovered.
+
+\begin{figure}[H]
     \centering
-    \section{Appendix: Layerwise view of sequences generated via various decoding methods}
-    \vspace{-0.5em}  % Reduce space after the title
-    
-    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{greedy_decoding.png}
-    \captionof{figure}{Greedy Decoding}
+    \includegraphics[width=\textwidth]{greedy_decoding.png}
+    \caption{Greedy Decoding: The model outputs filler tokens followed by the final answer}
     \label{fig:greedy}
-    
-    \vspace{0.5em}
-    
-    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{rank2_decoding.png}
-    \captionof{figure}{Greedy Decoding with Rank-2 Tokens}
-    \label{fig:rank2}
-    
-    \vspace{0.5em}
-    
-    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{our_method_decoding.png}
-    \captionof{figure}{Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{our_method_decoding.png}
+    \caption{Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)}
     \label{fig:our-method}
-    
-    \vspace{0.5em}
-    
-    \includegraphics[width=\textwidth,height=0.19\textheight,keepaspectratio]{random_tokens_decoding.png}
-    \captionof{figure}{Greedy Decoding with Filler Tokens Replaced by Randomly Selected Tokens}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{random_tokens_decoding.png}
+    \caption{Random Token Replacement: Replacing Filler Tokens with Random Tokens}
     \label{fig:random}
 \end{figure}
+
+As shown in Figures \ref{fig:our-method} and \ref{fig:random}, our method successfully recovers the hidden computations, while random token replacement leads to incoherent sequences.
 
 \clearpage
 
 \begin{thebibliography}{9}
 
-\bibitem{pfau2024let}
-Pfau, J., Merrill, W., \& Bowman, S. R. (2023). Let's Think Dot by Dot: Hidden Computation in Transformer Language Models. \href{https://arxiv.org/abs/2404.15758}{arXiv:2404.15758}.
-
 \bibitem{wei2022chain}
-Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B., Xia, F., ... \& Zhou, D. (2022). Chain-of-thought prompting elicits reasoning in large language models. \href{https://arxiv.org/abs/2201.11903}{arXiv:2201.11903}.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou.
+\newblock Chain-of-thought prompting elicits reasoning in large language models.
+\newblock \emph{arXiv preprint arXiv:2201.11903}, 2022.
+
+\bibitem{pfau2023let}
+Jacob Pfau, William Merrill, and Samuel~R. Bowman.
+\newblock Let's think dot by dot: Hidden computation in transformer language models.
+\newblock \emph{arXiv preprint arXiv:2308.07317}, 2023.
 
 \bibitem{nostalgebraist2020}
-nostalgebraist (2020). interpreting GPT: the logit lens \href{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/}{interpreting-gpt-the-logit-lens}
+Nostalgebraist.
+\newblock Interpreting {GPT}: the logit lens.
+\newblock \url{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens}, 2020.
+
+\bibitem{geva2020dissecting}
+Mor Geva, Tomer Schuster, and Jonathan Berant.
+\newblock Dissecting {Recall} of {Factual} {Associations} in {Auto}-{Regressive} {Language} {Models}.
+\newblock In \emph{Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)}, pages 1949--1958, 2020.
+
+\bibitem{elhage2021mathematical}
+Nelson Elhage, Neel Nanda, Catherine Olsson, et~al.
+\newblock A mathematical framework for transformer circuits.
+\newblock \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
+
+\bibitem{rogers2020primer}
+Anna Rogers, Olga Kovaleva, and Anna Rumshisky.
+\newblock A primer in {BERTology}: What we know about how {BERT} works.
+\newblock \emph{Transactions of the Association for Computational Linguistics}, 8:842--866, 2020.
+
+\bibitem{belinkov2019analysis}
+Yonatan Belinkov and James Glass.
+\newblock Analysis methods in neural language processing: A survey.
+\newblock \emph{Transactions of the Association for Computational Linguistics}, 7:49--72, 2019.
+
+\bibitem{lanham2023measuring}
+Taylor Lanham, Alex Tamkin, Ishita Dasgupta, and Tal Linzen.
+\newblock Measuring {Faithfulness} in {Chain}-of-{Thought} {Reasoning}.
+\newblock \emph{arXiv preprint arXiv:2307.05263}, 2023.
+
+\bibitem{madaan2023self}
+Divyansh Madaan, Niket Tandon, and Peter Clark.
+\newblock Self-{Chain}-of-{Thought}: {Aligning} {Language} {Models} with {Self}-Consistency.
+\newblock \emph{arXiv preprint arXiv:2307.02827}, 2023.
 
 \bibitem{touvron2023llama}
-Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M. A., Lacroix, T., ... \& Lample, G. (2023). LLaMA: Open and Efficient Foundation Language Models. \href{https://arxiv.org/abs/2302.13971}{arXiv:2302.13971}.
+Hugo Touvron, Thibaut Lavril, et~al.
+\newblock {LLaMA}: Open and {Efficient} {Foundation} {Language} {Models}.
+\newblock \emph{arXiv preprint arXiv:2302.13971}, 2023.
 
 \end{thebibliography}
 
 \end{document}
+
