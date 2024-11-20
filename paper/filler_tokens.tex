@@ -79,9 +79,9 @@ Understanding the internal mechanisms of language models and how they represent 
 
 \cite{elhage2021mathematical} introduced the concept of ``induction heads'' in transformer models, which are attention patterns that enable the model to copy sequences from earlier in the context. This mechanism could be related to how models overwrite intermediate computations with filler tokens in the later layers.
 
-Other work has focused on model interpretability and probing the representations within transformer models. \cite{rogers2020primer} provided a comprehensive overview of BERT and similar models, discussing various analysis techniques. \cite{belinkov2019analysis} surveyed methods for analyzing neural language processing models, including attention visualization and probing classifiers.
+In the context of the faithfulness of chain-of-thought reasoning, \cite{lanham2023measuring} explored methods to measure the alignment between the model's reasoning process and its outputs. They investigated whether models truly rely on their chain-of-thought reasoning or if they produce it post hoc. Similarly, \cite{turpin2023language} analyzed the problem-solving abilities of language models and the faithfulness of their reasoning processes.
 
-In the context of hidden computations, \cite{lanham2023measuring} and \cite{madaan2023self} examined the ability of language models to perform reasoning tasks when the chain of thought is obscured. Their findings suggest that while current large language models may not significantly benefit from filler tokens on certain benchmarks, the potential for hidden computations remains an important area of investigation.
+Our work differs by focusing on recovering hidden computations in models trained with filler tokens, providing insights into how models internally process reasoning steps even when they are not explicitly outputted.
 
 \section{Methodology}
 
@@ -215,14 +215,9 @@ Moreover, applying similar analysis techniques to other tasks and models could a
 
 Further work could also explore methods to prevent the overwriting of reasoning steps, allowing models to produce explicit chains of thought even when trained with filler tokens. Developing techniques to enhance the transparency and interpretability of models without compromising performance is an important direction for future research.
 
-\textbf{Applications:} Understanding hidden computations in language models has implications for model interpretability, safety, and alignment. By making the internal reasoning processes more transparent, we can build more trustworthy AI systems that are better aligned with human values and expectations.
+\section*{Appendix}
 
-
-\clearpage
-
-\appendix
-
-\section{Appendix: Layer-wise View of Sequences Generated via Various Decoding Methods}
+\section{Layer-wise View of Sequences Generated via Various Decoding Methods}
 
 In this appendix, we provide visualizations of the sequences generated using different decoding methods to illustrate how the hidden computations can be recovered.
 
@@ -231,6 +226,13 @@ In this appendix, we provide visualizations of the sequences generated using dif
     \includegraphics[width=\textwidth]{greedy_decoding.png}
     \caption{Greedy Decoding: The model outputs filler tokens followed by the final answer}
     \label{fig:greedy}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{rank2_decoding.png}
+    \caption{Greedy Decoding with Rank-2 Tokens}
+    \label{fig:rank2}
 \end{figure}
 
 \begin{figure}[H]
@@ -268,39 +270,24 @@ Nostalgebraist.
 \newblock Interpreting {GPT}: the logit lens.
 \newblock \url{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens}, 2020.
 
-\bibitem{geva2020dissecting}
-Mor Geva, Tomer Schuster, and Jonathan Berant.
-\newblock Dissecting {Recall} of {Factual} {Associations} in {Auto}-{Regressive} {Language} {Models}.
-\newblock In \emph{Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)}, pages 1949--1958, 2020.
-
 \bibitem{elhage2021mathematical}
 Nelson Elhage, Neel Nanda, Catherine Olsson, et~al.
 \newblock A mathematical framework for transformer circuits.
 \newblock \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
 
-\bibitem{rogers2020primer}
-Anna Rogers, Olga Kovaleva, and Anna Rumshisky.
-\newblock A primer in {BERTology}: What we know about how {BERT} works.
-\newblock \emph{Transactions of the Association for Computational Linguistics}, 8:842--866, 2020.
-
-\bibitem{belinkov2019analysis}
-Yonatan Belinkov and James Glass.
-\newblock Analysis methods in neural language processing: A survey.
-\newblock \emph{Transactions of the Association for Computational Linguistics}, 7:49--72, 2019.
-
 \bibitem{lanham2023measuring}
 Taylor Lanham, Alex Tamkin, Ishita Dasgupta, and Tal Linzen.
-\newblock Measuring {Faithfulness} in {Chain}-of-{Thought} {Reasoning}.
+\newblock Measuring faithfulness in chain-of-thought reasoning.
 \newblock \emph{arXiv preprint arXiv:2307.05263}, 2023.
 
-\bibitem{madaan2023self}
-Divyansh Madaan, Niket Tandon, and Peter Clark.
-\newblock Self-{Chain}-of-{Thought}: {Aligning} {Language} {Models} with {Self}-Consistency.
-\newblock \emph{arXiv preprint arXiv:2307.02827}, 2023.
+\bibitem{turpin2023language}
+Jonathan Turpin, Uma Roy, Gabriel Poesia, Jared Kaplan, and Noah Goodman.
+\newblock Language models are problem solvers: Formulation of prompts and the faithfulness of model reasoning.
+\newblock \emph{arXiv preprint arXiv:2305.14325}, 2023.
 
 \bibitem{touvron2023llama}
 Hugo Touvron, Thibaut Lavril, et~al.
-\newblock {LLaMA}: Open and {Efficient} {Foundation} {Language} {Models}.
+\newblock {LLaMA}: Open and efficient foundation language models.
 \newblock \emph{arXiv preprint arXiv:2302.13971}, 2023.
 
 \end{thebibliography}
