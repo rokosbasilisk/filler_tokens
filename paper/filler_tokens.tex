@@ -78,15 +78,9 @@ By applying the softmax function, we obtain a probability distribution over the 
 \newpage
 \section{Related Work}
 
-\paragraph{Analysis of Chain-of-Thought Faithfulness}
-Recent work has analyzed CoT faithfulness in different ways than our work. 
-\cite{gao2023shapley} use Shapley analysis to show that certain tokens of the CoT are much more important than others for the final answer. 
-Our work proposes different tests of CoT faithfulness with lower computational costs.
-\cite{madaan2022text} investigate CoT via counterfactual prompting and find that some aspects of the prompt are less important than others for the final answer reached.
-We intervene on the CoT produced by the model rather than few-shot prompt examples and propose general tests for CoT faithfulness.
-\cite{turpin2023language} discover examples of unfaithful CoT in adversarially constructed settings, showing that CoT reasoning is not always faithful. In that paper, the model produces CoT in the presence of biasing few-shot examples; while the model's final answer is consistent with the bias provided by the prompt, the CoT gives a different explanation for the answer that does not reference the biasing context. 
-In contrast, this work investigates non-adversarial settings to collect evidence about reasoning faithfulness under a wider variety of realistic conditions.
-\cite{wei2022chain} test three hypotheses for why CoT prompting provides a performance boost: that it produces an equation to be evaluated, that it provides additional test-time compute, and that the CoT better enables the model to access relevant information from pretraining. We expand upon the test-time compute only experiment presented in that work with the filler tokens experiment presented in Section~\ref{ssec:Filler tokens}, by evaluating a wider range of tasks and varying the number of filler tokens.
+Understanding the internal mechanisms of Chain-of-Thought (CoT) reasoning has been a significant focus of recent research. \cite{pfau2023let} demonstrated that models can perform reasoning tasks even when explicit CoT is replaced with filler tokens, suggesting the presence of hidden computations. This finding challenges the assumption that visible CoT directly reflects the model's reasoning process and indicates that models may retain and utilize internal reasoning pathways that are not immediately observable in the output.
+
+Assessing the faithfulness and robustness of model reasoning is crucial for ensuring the trustworthiness of language models. \cite{gao2023shapley} employed Shapley value analysis to identify the importance of specific CoT tokens for final answers, highlighting that not all parts of the CoT contribute equally to the model's decision-making process. Similarly, \cite{madaan2022text} explored counterfactual prompting to evaluate the robustness of CoT reasoning, finding that certain aspects of the prompt have a more significant influence on the final answer than others. These studies underscore the need for a deeper understanding of how CoT contributes to model performance and the reliability of its reasoning capabilities.
 
 \section{Methodology}
 
@@ -281,6 +275,13 @@ Nostalgebraist.
   \url{https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens},
   2020.
 
+\bibitem{elhage2021mathematical}
+Nelson Elhage, Neel Nanda, Catherine Olsson, Nicholas Schiefer, Skyler Hallinan,
+  Stanislav Fort, Danny Hernandez, and Chris Olah.
+\newblock A mathematical framework for transformer circuits.
+\newblock
+  \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
+
 \bibitem{gao2023shapley}
 Xiaoyu Gao.
 \newblock Shapley values for interpretability in transformer models.
@@ -304,13 +305,6 @@ Hugo Touvron, Thibaut Lavril, Gautier Izacard, Edouard Grave, Matthieu
   Sbarra, Aurelien Rodriguez, et~al.
 \newblock {LLaMA}: Open and efficient foundation language models.
 \newblock {\em arXiv preprint arXiv:2302.13971}, 2023.
-
-\bibitem{elhage2021mathematical}
-Nelson Elhage, Neel Nanda, Catherine Olsson, Nicholas Schiefer, Skyler Hallinan,
-  Stanislav Fort, Danny Hernandez, and Chris Olah.
-\newblock A mathematical framework for transformer circuits.
-\newblock
-  \url{https://transformer-circuits.pub/2021/framework/index.html}, 2021.
 
 \end{thebibliography}
 

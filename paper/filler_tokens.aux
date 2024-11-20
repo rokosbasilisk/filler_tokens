@@ -30,51 +30,49 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Hidden Chain-of-Thought with Filler Tokens}{2}{subsection.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}The 3SUM Task}{2}{subsection.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Logit Lens Method}{2}{subsection.2.4}\protected@file@percent }
+\citation{pfau2023let}
 \citation{gao2023shapley}
 \citation{madaan2022text}
-\citation{turpin2023language}
-\citation{wei2022chain}
 \citation{touvron2023llama}
 \citation{nostalgebraist2020}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Related Work}{3}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Analysis of Chain-of-Thought Faithfulness}{3}{section*.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{3}{section.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Model and Training}{3}{subsection.4.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Layer-wise Representation Analysis}{3}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Token Ranking Analysis}{4}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Token Ranking Analysis}{3}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Modified Decoding Algorithm}{4}{subsection.4.4}\protected@file@percent }
 \newlabel{ssec:Filler tokens}{{4.4}{4}{Modified Decoding Algorithm}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{4}{section.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Layer-wise Representation Analysis}{4}{subsection.5.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Percentage of filler tokens among top predictions across layers\relax }}{5}{figure.caption.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Percentage of filler tokens among top predictions across layers\relax }}{5}{figure.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:hidden_token_percentages}{{1}{5}{Percentage of filler tokens among top predictions across layers\relax }{figure.caption.2}{}}
+\newlabel{fig:hidden_token_percentages}{{1}{5}{Percentage of filler tokens among top predictions across layers\relax }{figure.caption.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Token Ranking Analysis}{5}{subsection.5.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Example of token rankings at a decoding step\relax }}{5}{table.caption.3}\protected@file@percent }
-\newlabel{tab:token_ranks}{{1}{5}{Example of token rankings at a decoding step\relax }{table.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Example of token rankings at a decoding step\relax }}{5}{table.caption.2}\protected@file@percent }
+\newlabel{tab:token_ranks}{{1}{5}{Example of token rankings at a decoding step\relax }{table.caption.2}{}}
 \citation{elhage2021mathematical}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Modified Decoding Algorithm}{6}{subsection.5.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }}{6}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:token_comparison}{{2}{6}{Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }}{6}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:token_comparison}{{2}{6}{Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }{figure.caption.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Discussion}{6}{subsection.5.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{7}{section.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {7}Future Work}{7}{section.7}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {A}Layer-wise View of Sequences Generated via Various Decoding Methods}{8}{appendix.A}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Greedy Decoding: The model outputs filler tokens followed by the final answer\relax }}{8}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:greedy}{{3}{8}{Greedy Decoding: The model outputs filler tokens followed by the final answer\relax }{figure.caption.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Greedy Decoding with Rank-2 Tokens\relax }}{8}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:rank2}{{4}{8}{Greedy Decoding with Rank-2 Tokens\relax }{figure.caption.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)\relax }}{8}{figure.caption.7}\protected@file@percent }
-\newlabel{fig:our-method}{{5}{8}{Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)\relax }{figure.caption.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }}{9}{figure.caption.8}\protected@file@percent }
-\newlabel{fig:random}{{6}{9}{Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }{figure.caption.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Greedy Decoding: The model outputs filler tokens followed by the final answer\relax }}{8}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:greedy}{{3}{8}{Greedy Decoding: The model outputs filler tokens followed by the final answer\relax }{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Greedy Decoding with Rank-2 Tokens\relax }}{8}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:rank2}{{4}{8}{Greedy Decoding with Rank-2 Tokens\relax }{figure.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)\relax }}{8}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:our-method}{{5}{8}{Our Method: Greedy Decoding with Filler Tokens Replaced by Lower-Ranked Tokens (Recovering Hidden Computations)\relax }{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }}{9}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:random}{{6}{9}{Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }{figure.caption.7}{}}
 \bibcite{wei2022chain}{{1}{}{{}}{{}}}
 \bibcite{pfau2023let}{{2}{}{{}}{{}}}
 \bibcite{nostalgebraist2020}{{3}{}{{}}{{}}}
-\bibcite{gao2023shapley}{{4}{}{{}}{{}}}
-\bibcite{madaan2022text}{{5}{}{{}}{{}}}
-\bibcite{turpin2023language}{{6}{}{{}}{{}}}
-\bibcite{touvron2023llama}{{7}{}{{}}{{}}}
-\bibcite{elhage2021mathematical}{{8}{}{{}}{{}}}
+\bibcite{elhage2021mathematical}{{4}{}{{}}{{}}}
+\bibcite{gao2023shapley}{{5}{}{{}}{{}}}
+\bibcite{madaan2022text}{{6}{}{{}}{{}}}
+\bibcite{turpin2023language}{{7}{}{{}}{{}}}
+\bibcite{touvron2023llama}{{8}{}{{}}{{}}}
 \providecommand\NAT@force@numbers{}\NAT@force@numbers
 \gdef \@abspage@last{10}
