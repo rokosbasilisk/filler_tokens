@@ -38,24 +38,29 @@
 \@writefile{toc}{\contentsline {section}{\numberline {3}Related Work}{3}{section.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{3}{section.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Model and Training}{3}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Dataset Generation}{3}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Instance-Adaptive Chain of Thought}{4}{subsection.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Data Generation Procedure}{4}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Setup}{4}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Dataset Generation}{4}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}True and Corrupted Instances}{4}{subsubsection.5.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Motivation for Corrupted Instances}{4}{subsubsection.5.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Instance-Adaptive Chain of Thought}{4}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Data Generation Procedure}{4}{subsection.5.3}\protected@file@percent }
 \citation{nostalgebraist2020}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Layer-wise Representation Analysis}{5}{subsection.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Token Ranking Analysis}{5}{subsection.5.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Modified Decoding Algorithm}{6}{subsection.5.5}\protected@file@percent }
-\newlabel{ssec:Filler tokens}{{5.5}{6}{Modified Decoding Algorithm}{subsection.5.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.3.1}Dataset Parameters}{5}{subsubsection.5.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Hyperparameter Configuration}{5}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Layer-wise Representation Analysis}{5}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Token Ranking Analysis}{6}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}Modified Decoding Algorithm}{6}{subsection.5.7}\protected@file@percent }
+\newlabel{ssec:Filler tokens}{{5.7}{6}{Modified Decoding Algorithm}{subsection.5.7}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {6}Results and Discussion}{6}{section.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Layer-wise Representation Analysis}{6}{subsection.6.1}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Percentage of filler tokens among top predictions across layers\relax }}{7}{figure.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{fig:hidden_token_percentages}{{1}{7}{Percentage of filler tokens among top predictions across layers\relax }{figure.caption.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Token Ranking Analysis}{7}{subsection.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Modified Decoding Algorithm}{7}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Decoding Methods Comparison}{7}{subsection.6.3}\protected@file@percent }
 \citation{elhage2021mathematical}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }}{8}{figure.caption.2}\protected@file@percent }
-\newlabel{fig:token_comparison}{{2}{8}{Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden computations compared to random token replacement\relax }{figure.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden characters compared to random token replacement\relax }}{8}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:token_comparison}{{2}{8}{Comparison of decoding methods: Our method achieves higher accuracy in recovering hidden characters compared to random token replacement\relax }{figure.caption.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Discussion}{8}{subsection.6.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{9}{section.7}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {8}Future Work}{9}{section.8}\protected@file@percent }
@@ -64,8 +69,8 @@
 \newlabel{fig:greedy}{{3}{10}{Greedy Decoding: The model outputs filler tokens followed by the final answer\relax }{figure.caption.3}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Greedy Decoding with Rank-2 Tokens\relax }}{10}{figure.caption.4}\protected@file@percent }
 \newlabel{fig:rank2}{{4}{10}{Greedy Decoding with Rank-2 Tokens\relax }{figure.caption.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens (Recovering Hidden Computations)\relax }}{10}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:our-method}{{5}{10}{Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens (Recovering Hidden Computations)\relax }{figure.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens (Recovering hidden characters)\relax }}{10}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:our-method}{{5}{10}{Our Method: Greedy Decoding with Filler Tokens Replaced by Rank-2 Tokens (Recovering hidden characters)\relax }{figure.caption.5}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }}{11}{figure.caption.6}\protected@file@percent }
 \newlabel{fig:random}{{6}{11}{Random Token Replacement: Replacing Filler Tokens with Random Tokens\relax }{figure.caption.6}{}}
 \bibcite{wei2022chain}{{1}{}{{}}{{}}}
